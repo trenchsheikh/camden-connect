@@ -539,10 +539,10 @@ export default function Home() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Sami LinkedIn profile"
-                    className="inline-flex h-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-[#0a66c2] text-white touch-manipulation transition hover:brightness-110 sm:h-9 sm:min-h-0 sm:min-w-0 sm:px-2"
+                    className="inline-flex h-10 min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-full border border-[#0a66c2]/15 bg-white text-[#0a66c2] shadow-[0_8px_18px_-14px_rgba(10,102,194,0.75)] transition hover:border-[#0a66c2]/25 hover:bg-[#f3f8ff] active:scale-95 sm:h-9 sm:min-h-0 sm:min-w-0 sm:px-2"
                   >
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden="true">
-                      <path d="M19 3A2 2 0 0 1 21 5V19A2 2 0 0 1 19 21H5A2 2 0 0 1 3 19V5A2 2 0 0 1 5 3H19ZM8.34 10.33H5.67V18.5H8.34V10.33ZM7 5.8A1.55 1.55 0 1 0 7 8.9A1.55 1.55 0 0 0 7 5.8ZM18.34 13.58C18.34 11.15 17.04 10.02 15.31 10.02C13.91 10.02 13.29 10.79 12.94 11.33V10.33H10.27V18.5H12.94V13.96C12.94 12.76 13.17 11.6 14.66 11.6C16.13 11.6 16.15 12.98 16.15 14.03V18.5H18.82V13.58H18.34Z" />
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 sm:h-4 sm:w-4" aria-hidden="true">
+                      <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12Zm1.78 13.02H3.56V9h3.56v11.45ZM22.23 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.46c.98 0 1.77-.77 1.77-1.72V1.72C24 .77 23.21 0 22.23 0Z" />
                     </svg>
                   </a>
                 </div>
