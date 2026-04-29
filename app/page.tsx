@@ -18,20 +18,54 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FIELD_ORDER = ["reason", "name", "email"] as const;
 type FieldName = (typeof FIELD_ORDER)[number];
 type MobileFormStep = 0 | 1 | 2;
+type Role = "mentor" | "mentee" | "";
+type PopupStep = "qualify" | "thanks";
+type FormState = {
+  role: Role;
+  reason: string;
+  name: string;
+  email: string;
+};
+
+const STEP_LABELS = ["Role", "Reason", "Contact"] as const;
+const INITIAL_FORM_STATE: FormState = {
+  role: "",
+  reason: "",
+  name: "",
+  email: "",
+};
+
+const ERRORS = {
+  roleRequired: "Please pick whether you're a mentor or a mentee.",
+  reasonRequired: "Tell us in a line or two why you'd like to use Camden Connect.",
+  nameRequired: "Please add your name so we know who to reach.",
+  emailInvalid: "Please enter a valid email like you@example.com.",
+  submitFailed: "Could not submit right now. Please try again.",
+  networkFailed: "Could not submit right now. Please check your connection.",
+} as const;
+
+function validateStep(form: FormState, step: MobileFormStep): string | null {
+  if (step === 0 && !form.role) return ERRORS.roleRequired;
+  if (step === 1 && !form.reason.trim()) return ERRORS.reasonRequired;
+  return null;
+}
+
+function validateBeforeSubmit(form: FormState): string | null {
+  if (!form.role) return ERRORS.roleRequired;
+  if (!form.reason.trim()) return ERRORS.reasonRequired;
+  if (!form.name.trim()) return ERRORS.nameRequired;
+  if (!EMAIL_RE.test(form.email.trim())) return ERRORS.emailInvalid;
+  return null;
+}
 
 export default function Home() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [popupStep, setPopupStep] = useState<"qualify" | "thanks">("qualify");
+  const [popupStep, setPopupStep] = useState<PopupStep>("qualify");
   const [shareState, setShareState] = useState<"idle" | "shared" | "copied">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [mobileFormStep, setMobileFormStep] = useState<MobileFormStep>(0);
-  const [form, setForm] = useState({
-    role: "",
-    reason: "",
-    name: "",
-    email: "",
-  });
+  const [form, setForm] = useState<FormState>(INITIAL_FORM_STATE);
   const sheetRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const backdropPointerDownRef = useRef<EventTarget | null>(null);
@@ -51,12 +85,7 @@ export default function Home() {
     setSubmitError("");
     setIsSubmitting(false);
     setMobileFormStep(0);
-    setForm({
-      role: role ?? "",
-      reason: "",
-      name: "",
-      email: "",
-    });
+    setForm({ ...INITIAL_FORM_STATE, role: role ?? "" });
   }, []);
 
   useLayoutEffect(() => {
@@ -194,18 +223,15 @@ export default function Home() {
 
   const validateMobileStep = useCallback(
     (step: MobileFormStep) => {
-      if (step === 0 && !form.role) {
-        setSubmitError("Please pick whether you're a mentor or a mentee.");
-        return false;
-      }
-      if (step === 1 && !form.reason.trim()) {
-        setSubmitError("Tell us in a line or two why you'd like to use Camden Connect.");
+      const error = validateStep(form, step);
+      if (error) {
+        setSubmitError(error);
         return false;
       }
       setSubmitError("");
       return true;
     },
-    [form.reason, form.role]
+    [form]
   );
 
   const goToMobileStep = useCallback(
@@ -261,21 +287,12 @@ export default function Home() {
     const reason = form.reason.trim();
     const name = form.name.trim();
     const email = form.email.trim();
-
-    if (!role) {
-      setSubmitError("Please pick whether you're a mentor or a mentee.");
-      return;
-    }
-    if (!reason) {
-      setSubmitError("Tell us in a line or two why you'd like to use Camden Connect.");
-      return;
-    }
-    if (!name) {
-      setSubmitError("Please add your name so we know who to reach.");
-      return;
-    }
-    if (!EMAIL_RE.test(email)) {
-      setSubmitError("Please enter a valid email like you@example.com.");
+    const validationError = validateBeforeSubmit({ role, reason, name, email });
+    if (validationError) {
+      if (!role) setMobileFormStep(0);
+      else if (!reason) setMobileFormStep(1);
+      else setMobileFormStep(2);
+      setSubmitError(validationError);
       return;
     }
 
@@ -307,7 +324,7 @@ export default function Home() {
           return send(attempt + 1);
         }
 
-        let message = "Could not submit right now. Please try again.";
+        let message: string = ERRORS.submitFailed;
         try {
           const data = (await response.json()) as { error?: string };
           if (data.error) message = data.error;
@@ -320,7 +337,7 @@ export default function Home() {
           await new Promise((r) => setTimeout(r, 500));
           return send(attempt + 1);
         }
-        return { ok: false, message: "Could not submit right now. Please check your connection." };
+        return { ok: false, message: ERRORS.networkFailed };
       }
     };
 
@@ -330,6 +347,7 @@ export default function Home() {
           // Roll back to the form with the user's data intact so they can retry.
           setSubmitError(result.message);
           setPopupStep("qualify");
+          setMobileFormStep(2);
         }
       })
       .finally(() => {
@@ -576,7 +594,7 @@ export default function Home() {
                 <div>
                   <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[#6b7280]">
                     <span>Step {mobileFormStep + 1} of 3</span>
-                    <span>{["Role", "Reason", "Contact"][mobileFormStep]}</span>
+                    <span>{STEP_LABELS[mobileFormStep]}</span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-[#e5e7eb]" aria-hidden>
                     <div
