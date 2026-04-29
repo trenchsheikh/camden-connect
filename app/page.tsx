@@ -1,11 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { FocusEvent, FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  FocusEvent,
+  FormEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import Image from "next/image";
 import logo from "../logo.png";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const FIELD_ORDER = ["reason", "name", "email"] as const;
+type FieldName = (typeof FIELD_ORDER)[number];
 
 export default function Home() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -22,6 +33,9 @@ export default function Home() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const backdropPointerDownRef = useRef<EventTarget | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const mentorButtonRef = useRef<HTMLButtonElement>(null);
+  const menteeButtonRef = useRef<HTMLButtonElement>(null);
 
   const closePopup = useCallback(() => {
     setIsPopupOpen(false);
@@ -125,6 +139,68 @@ export default function Home() {
     }, 320);
   }, []);
 
+  /** Resolve and focus the next form control by name. Returns true if a target was focused. */
+  const focusFieldByName = useCallback((name: FieldName) => {
+    const form = formRef.current;
+    if (!form) return false;
+    const next = form.elements.namedItem(name);
+    if (next instanceof HTMLElement) {
+      next.focus();
+      if (next instanceof HTMLInputElement || next instanceof HTMLTextAreaElement) {
+        const len = next.value.length;
+        try {
+          next.setSelectionRange(len, len);
+        } catch {
+          /* not all input types support selectionRange */
+        }
+      }
+      return true;
+    }
+    return false;
+  }, []);
+
+  /** Press Enter to advance to the next field; on the last field, submit the form. */
+  const handleAdvanceKey = useCallback(
+    (current: FieldName) =>
+      (event: ReactKeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        if (event.key !== "Enter") return;
+        if (event.shiftKey) return; // allow Shift+Enter for newlines in textarea
+        event.preventDefault();
+        const idx = FIELD_ORDER.indexOf(current);
+        const next = FIELD_ORDER[idx + 1];
+        if (next) {
+          focusFieldByName(next);
+        } else {
+          formRef.current?.requestSubmit();
+        }
+      },
+    [focusFieldByName]
+  );
+
+  /** Arrow-key navigation between role buttons; Enter selects + advances to the reason field. */
+  const handleRoleKeyDown = useCallback(
+    (role: "mentor" | "mentee") =>
+      (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+        if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+          event.preventDefault();
+          (role === "mentor" ? menteeButtonRef : mentorButtonRef).current?.focus();
+          return;
+        }
+        if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+          event.preventDefault();
+          (role === "mentor" ? menteeButtonRef : mentorButtonRef).current?.focus();
+          return;
+        }
+        if (event.key === "Enter") {
+          event.preventDefault();
+          setForm((prev) => ({ ...prev, role }));
+          if (submitError) setSubmitError("");
+          window.setTimeout(() => focusFieldByName("reason"), 0);
+        }
+      },
+    [focusFieldByName, submitError]
+  );
+
   useEffect(() => {
     if (!isPopupOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -134,8 +210,10 @@ export default function Home() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isPopupOpen, closePopup]);
 
-  const submitDetails = async (event: FormEvent) => {
+  const submitDetails = (event: FormEvent) => {
     event.preventDefault();
+    if (isSubmitting) return;
+
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -162,36 +240,62 @@ export default function Home() {
       return;
     }
 
+    // Optimistic UI — show "thanks" immediately, save in the background.
     setSubmitError("");
     setIsSubmitting(true);
-    try {
-      const response = await fetch("/api/submissions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          role,
-          reason,
-          name,
-          email,
-          source: "landing-popup",
-        }),
-      });
-      if (!response.ok) {
+    setPopupStep("thanks");
+
+    const body = JSON.stringify({
+      role,
+      reason,
+      name,
+      email,
+      source: "landing-popup",
+    });
+
+    const send = async (attempt: number): Promise<{ ok: true } | { ok: false; message: string }> => {
+      try {
+        const response = await fetch("/api/submissions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+          keepalive: true,
+        });
+        if (response.ok) return { ok: true };
+
+        if (response.status >= 500 && attempt < 1) {
+          await new Promise((r) => setTimeout(r, 500));
+          return send(attempt + 1);
+        }
+
         let message = "Could not submit right now. Please try again.";
         try {
           const data = (await response.json()) as { error?: string };
           if (data.error) message = data.error;
         } catch {
-          /* use default */
+          /* keep default */
         }
-        throw new Error(message);
+        return { ok: false, message };
+      } catch {
+        if (attempt < 1) {
+          await new Promise((r) => setTimeout(r, 500));
+          return send(attempt + 1);
+        }
+        return { ok: false, message: "Could not submit right now. Please check your connection." };
       }
-      setPopupStep("thanks");
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Could not submit right now. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    };
+
+    void send(0)
+      .then((result) => {
+        if (!result.ok) {
+          // Roll back to the form with the user's data intact so they can retry.
+          setSubmitError(result.message);
+          setPopupStep("qualify");
+        }
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   };
 
   const handleShare = async () => {
@@ -421,6 +525,7 @@ export default function Home() {
 
             {popupStep === "qualify" && (
               <form
+                ref={formRef}
                 key="qualify"
                 className="animate-modal-step-in space-y-4 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))]"
                 onSubmit={submitDetails}
@@ -436,25 +541,31 @@ export default function Home() {
                     aria-labelledby="early-access-role-label"
                   >
                     <button
+                      ref={mentorButtonRef}
                       type="button"
                       role="radio"
                       aria-checked={form.role === "mentor"}
+                      tabIndex={form.role === "mentee" ? -1 : 0}
                       onClick={() => {
                         setForm((prev) => ({ ...prev, role: "mentor" }));
                         if (submitError) setSubmitError("");
                       }}
+                      onKeyDown={handleRoleKeyDown("mentor")}
                       className={`min-h-[44px] touch-manipulation rounded-full px-4 py-3 text-center text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/40 sm:min-h-0 sm:py-2 ${form.role === "mentor" ? "bg-[#2563eb] text-white" : "border border-[#111827]/15 text-[#374151] active:bg-[#f8fafc]"}`}
                     >
                       Mentor
                     </button>
                     <button
+                      ref={menteeButtonRef}
                       type="button"
                       role="radio"
                       aria-checked={form.role === "mentee"}
+                      tabIndex={form.role === "mentee" ? 0 : -1}
                       onClick={() => {
                         setForm((prev) => ({ ...prev, role: "mentee" }));
                         if (submitError) setSubmitError("");
                       }}
+                      onKeyDown={handleRoleKeyDown("mentee")}
                       className={`min-h-[44px] touch-manipulation rounded-full px-4 py-3 text-center text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/40 sm:min-h-0 sm:py-2 ${form.role === "mentee" ? "bg-[#2563eb] text-white" : "border border-[#111827]/15 text-[#374151] active:bg-[#f8fafc]"}`}
                     >
                       Mentee looking for mentor
@@ -469,6 +580,7 @@ export default function Home() {
                     value={form.reason}
                     onChange={(event) => setForm((prev) => ({ ...prev, reason: event.target.value }))}
                     onFocus={handleFieldFocus}
+                    onKeyDown={handleAdvanceKey("reason")}
                     className="w-full resize-none rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none transition-colors focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 md:py-2.5 md:text-sm"
                     placeholder="Share your reason in one or two lines..."
                     autoComplete="off"
@@ -488,6 +600,7 @@ export default function Home() {
                     value={form.name}
                     onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
                     onFocus={handleFieldFocus}
+                    onKeyDown={handleAdvanceKey("name")}
                     className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none transition-colors focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 md:py-2.5 md:text-sm"
                     placeholder="Full name"
                     autoComplete="name"
@@ -506,6 +619,7 @@ export default function Home() {
                     value={form.email}
                     onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
                     onFocus={handleFieldFocus}
+                    onKeyDown={handleAdvanceKey("email")}
                     className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none transition-colors focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 md:py-2.5 md:text-sm"
                     placeholder="you@email.com"
                     autoComplete="email"
