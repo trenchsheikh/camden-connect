@@ -7,6 +7,7 @@ import logo from "../logo.png";
 
 export default function Home() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [isOpeningGate, setIsOpeningGate] = useState(false);
   const [popupStep, setPopupStep] = useState<"qualify" | "thanks">("qualify");
   const [shareState, setShareState] = useState<"idle" | "shared" | "copied">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,6 +19,7 @@ export default function Home() {
     email: "",
   });
   const sheetRef = useRef<HTMLDivElement>(null);
+  const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const closePopup = useCallback(() => {
     setIsPopupOpen(false);
@@ -36,7 +38,7 @@ export default function Home() {
     });
   }, []);
 
-  const openPopup = (role?: "mentor" | "mentee") => {
+  const openPopup = useCallback((role?: "mentor" | "mentee") => {
     setIsPopupOpen(true);
     setPopupStep("qualify");
     setShareState("idle");
@@ -48,7 +50,43 @@ export default function Home() {
       name: "",
       email: "",
     });
-  };
+  }, []);
+
+  const requestOpenPopup = useCallback(
+    (role?: "mentor" | "mentee") => {
+      if (isOpeningGate || isPopupOpen) return;
+      if (openTimerRef.current) clearTimeout(openTimerRef.current);
+      setIsOpeningGate(true);
+      const reduced =
+        typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      /* 6s default; shorter when reduced motion. */
+      const ms = reduced ? 800 : 6000;
+      openTimerRef.current = setTimeout(() => {
+        openTimerRef.current = null;
+        openPopup(role);
+        setIsOpeningGate(false);
+      }, ms);
+    },
+    [isOpeningGate, isPopupOpen, openPopup],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (openTimerRef.current) clearTimeout(openTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOpeningGate) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (openTimerRef.current) clearTimeout(openTimerRef.current);
+      openTimerRef.current = null;
+      setIsOpeningGate(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpeningGate]);
 
   useLayoutEffect(() => {
     if (!isPopupOpen) return;
@@ -149,7 +187,7 @@ export default function Home() {
               href="/mentee/invite"
               onClick={(event) => {
                 event.preventDefault();
-                openPopup();
+                requestOpenPopup();
               }}
             >
               Get started
@@ -181,7 +219,7 @@ export default function Home() {
                   href="/mentors"
                   onClick={(event) => {
                     event.preventDefault();
-                    openPopup("mentee");
+                    requestOpenPopup("mentee");
                   }}
                 >
                   Start with Atlas
@@ -191,7 +229,7 @@ export default function Home() {
                   href="/mentor/apply"
                   onClick={(event) => {
                     event.preventDefault();
-                    openPopup("mentor");
+                    requestOpenPopup("mentor");
                   }}
                 >
                   Start with Nova
@@ -272,6 +310,24 @@ export default function Home() {
         </div>
         <div className="shrink-0 bg-white" style={{ height: "env(safe-area-inset-bottom, 0px)" }} aria-hidden />
       </footer>
+
+      {isOpeningGate && (
+        <div
+          className="animate-launch-gate-backdrop fixed inset-0 z-[90] flex items-center justify-center bg-[#0f172a]/32 p-6 backdrop-blur-[3px]"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div className="animate-launch-gate-card w-full max-w-[280px] rounded-2xl border border-[#111827]/10 bg-white/95 px-6 py-6 text-center shadow-[0_24px_48px_-24px_rgba(15,23,42,0.35)] sm:px-7">
+            <p className="text-base font-semibold leading-snug tracking-tight text-[#111827]">We haven&apos;t launched yet</p>
+            <p className="mt-2 text-sm leading-snug text-[#4b5563]">Early access only—loading your form.</p>
+            <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-[#2563eb]">Loading</p>
+            <div className="mx-auto mt-2.5 h-1.5 w-full max-w-[11rem] overflow-hidden rounded-full bg-[#e5e7eb]">
+              <div className="launch-gate-sweep" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {isPopupOpen && (
         <div
