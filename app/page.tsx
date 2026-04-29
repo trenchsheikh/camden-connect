@@ -7,7 +7,6 @@ import logo from "../logo.png";
 
 export default function Home() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [isOpeningGate, setIsOpeningGate] = useState(false);
   const [popupStep, setPopupStep] = useState<"qualify" | "thanks">("qualify");
   const [shareState, setShareState] = useState<"idle" | "shared" | "copied">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,23 +18,9 @@ export default function Home() {
     email: "",
   });
   const sheetRef = useRef<HTMLDivElement>(null);
-  const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const closePopup = useCallback(() => {
     setIsPopupOpen(false);
-  }, []);
-
-  /** After the keyboard closes, nothing in the sheet is focused—scroll back to top for the default sheet view. */
-  const handleSheetFieldBlur = useCallback(() => {
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        const sheet = sheetRef.current;
-        if (!sheet) return;
-        const active = document.activeElement;
-        if (active instanceof Node && sheet.contains(active)) return;
-        sheet.scrollTo({ top: 0, behavior: "auto" });
-      }, 150);
-    });
   }, []);
 
   const openPopup = useCallback((role?: "mentor" | "mentee") => {
@@ -51,42 +36,6 @@ export default function Home() {
       email: "",
     });
   }, []);
-
-  const requestOpenPopup = useCallback(
-    (role?: "mentor" | "mentee") => {
-      if (isOpeningGate || isPopupOpen) return;
-      if (openTimerRef.current) clearTimeout(openTimerRef.current);
-      setIsOpeningGate(true);
-      const reduced =
-        typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      /* 6s default; shorter when reduced motion. */
-      const ms = reduced ? 800 : 6000;
-      openTimerRef.current = setTimeout(() => {
-        openTimerRef.current = null;
-        openPopup(role);
-        setIsOpeningGate(false);
-      }, ms);
-    },
-    [isOpeningGate, isPopupOpen, openPopup],
-  );
-
-  useEffect(() => {
-    return () => {
-      if (openTimerRef.current) clearTimeout(openTimerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isOpeningGate) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (openTimerRef.current) clearTimeout(openTimerRef.current);
-      openTimerRef.current = null;
-      setIsOpeningGate(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isOpeningGate]);
 
   useLayoutEffect(() => {
     if (!isPopupOpen) return;
@@ -107,6 +56,41 @@ export default function Home() {
       document.body.style.width = "";
       document.body.style.overflow = "";
       window.scrollTo(0, scrollY);
+    };
+  }, [isPopupOpen]);
+
+  /** iOS Safari: after the keyboard closes, the sheet scroll layer often stops accepting pans until layout is nudged. */
+  useEffect(() => {
+    if (!isPopupOpen) return;
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const nudgeSheetScroll = () => {
+      const el = sheetRef.current;
+      if (!el) return;
+      requestAnimationFrame(() => {
+        const prev = el.style.overflow;
+        el.style.overflow = "hidden";
+        void el.offsetHeight;
+        el.style.overflow = prev || "";
+        void el.offsetHeight;
+      });
+    };
+
+    const onViewportChange = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(nudgeSheetScroll, 50);
+    };
+
+    const vv = window.visualViewport;
+    nudgeSheetScroll();
+    vv?.addEventListener("resize", onViewportChange);
+    vv?.addEventListener("scroll", onViewportChange);
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      vv?.removeEventListener("resize", onViewportChange);
+      vv?.removeEventListener("scroll", onViewportChange);
     };
   }, [isPopupOpen]);
 
@@ -183,11 +167,11 @@ export default function Home() {
               <p className="hidden text-base font-extrabold tracking-tight text-[#2563eb] sm:text-lg md:block md:text-xl">Camden Connect</p>
             </div>
             <Link
-              className="rounded-full bg-gradient-to-br from-[#172554] via-[#2563eb] to-white px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_8px_20px_-10px_rgba(23,37,84,0.5)] drop-shadow-[0_1px_1px_rgba(15,23,42,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_12px_24px_-10px_rgba(23,37,84,0.55)] active:scale-95 sm:px-4 sm:py-2 sm:text-sm md:px-5"
+              className="rounded-full bg-gradient-to-br from-[#172554] from-0% via-[#2563eb] via-[86%] to-white to-100% px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_8px_20px_-10px_rgba(23,37,84,0.5)] drop-shadow-[0_1px_1px_rgba(15,23,42,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_12px_24px_-10px_rgba(23,37,84,0.55)] active:scale-95 sm:px-4 sm:py-2 sm:text-sm md:px-5"
               href="/mentee/invite"
               onClick={(event) => {
                 event.preventDefault();
-                requestOpenPopup();
+                openPopup();
               }}
             >
               Get started
@@ -214,21 +198,21 @@ export default function Home() {
               </p>
               <div className="mt-5 flex w-full max-w-xl flex-col gap-between-buttons sm:mt-6 sm:flex-row md:mt-8 max-md:animate-mobile-enter-up max-md:mobile-enter-delay-3">
                 <Link
-                  className="inline-flex min-h-11 flex-1 basis-0 items-center justify-center rounded-full bg-gradient-to-br from-[#172554] via-[#2563eb] to-white px-4 py-2.5 text-center text-xs font-bold text-white shadow-[0_10px_24px_-10px_rgba(23,37,84,0.55)] drop-shadow-[0_1px_1px_rgba(15,23,42,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_14px_28px_-10px_rgba(23,37,84,0.6)] active:scale-95 sm:min-h-12 sm:px-5 sm:py-2.5 sm:text-sm md:px-6 md:py-3"
+                  className="inline-flex min-h-11 flex-1 basis-0 items-center justify-center rounded-full bg-gradient-to-br from-[#172554] from-0% via-[#2563eb] via-[86%] to-white to-100% px-4 py-2.5 text-center text-xs font-bold text-white shadow-[0_10px_24px_-10px_rgba(23,37,84,0.55)] drop-shadow-[0_1px_1px_rgba(15,23,42,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_14px_28px_-10px_rgba(23,37,84,0.6)] active:scale-95 sm:min-h-12 sm:px-5 sm:py-2.5 sm:text-sm md:px-6 md:py-3"
                   href="/mentors"
                   onClick={(event) => {
                     event.preventDefault();
-                    requestOpenPopup("mentee");
+                    openPopup("mentee");
                   }}
                 >
                   Start with Atlas
                 </Link>
                 <Link
-                  className="inline-flex min-h-11 flex-1 basis-0 items-center justify-center rounded-full bg-gradient-to-br from-[#172554] via-[#1e40af] to-white px-4 py-2.5 text-center text-xs font-bold text-white shadow-[0_10px_24px_-10px_rgba(23,37,84,0.55)] drop-shadow-[0_1px_1px_rgba(15,23,42,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_14px_28px_-10px_rgba(23,37,84,0.6)] active:scale-95 sm:min-h-12 sm:px-5 sm:py-2.5 sm:text-sm md:px-6 md:py-3"
+                  className="inline-flex min-h-11 flex-1 basis-0 items-center justify-center rounded-full bg-gradient-to-br from-[#172554] from-0% via-[#1e40af] via-[86%] to-white to-100% px-4 py-2.5 text-center text-xs font-bold text-white shadow-[0_10px_24px_-10px_rgba(23,37,84,0.55)] drop-shadow-[0_1px_1px_rgba(15,23,42,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_14px_28px_-10px_rgba(23,37,84,0.6)] active:scale-95 sm:min-h-12 sm:px-5 sm:py-2.5 sm:text-sm md:px-6 md:py-3"
                   href="/mentor/apply"
                   onClick={(event) => {
                     event.preventDefault();
-                    requestOpenPopup("mentor");
+                    openPopup("mentor");
                   }}
                 >
                   Start with Nova
@@ -310,27 +294,10 @@ export default function Home() {
         <div className="shrink-0 bg-white" style={{ height: "env(safe-area-inset-bottom, 0px)" }} aria-hidden />
       </footer>
 
-      {isOpeningGate && (
-        <div
-          className="animate-launch-gate-backdrop fixed inset-0 z-[90] flex items-center justify-center bg-[#0f172a]/32 p-6 backdrop-blur-[3px]"
-          role="status"
-          aria-live="polite"
-          aria-busy="true"
-        >
-          <div className="animate-launch-gate-card w-full max-w-[260px] rounded-2xl border border-[#111827]/10 bg-white/95 px-6 py-6 text-center shadow-[0_24px_48px_-24px_rgba(15,23,42,0.35)] sm:px-7">
-            <p className="text-sm font-medium leading-snug text-[#4b5563]">AI agents pair your next match.</p>
-            <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-[#2563eb]">Loading</p>
-            <div className="mx-auto mt-2.5 h-1.5 w-full max-w-[11rem] overflow-hidden rounded-full bg-[#e5e7eb]">
-              <div className="launch-gate-sweep" />
-            </div>
-          </div>
-        </div>
-      )}
-
       {isPopupOpen && (
         <div
           role="presentation"
-          className="animate-modal-backdrop fixed inset-0 z-[100] flex touch-manipulation items-end justify-center bg-[#111827]/45 p-3 sm:items-center sm:p-4"
+          className="animate-modal-backdrop fixed inset-0 z-[100] flex min-h-0 touch-manipulation items-end justify-center bg-[#111827]/45 p-3 sm:items-center sm:p-4"
           style={{
             paddingTop: "max(0.75rem, env(safe-area-inset-top, 0px))",
             paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
@@ -344,7 +311,7 @@ export default function Home() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="early-access-title"
-            className="animate-modal-sheet modal-sheet-scroll max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem))] w-full max-w-lg overflow-y-auto overscroll-y-contain rounded-t-[20px] bg-white px-4 pb-5 pt-3 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:rounded-2xl sm:p-6 sm:pb-6 md:p-7"
+            className="animate-modal-sheet modal-sheet-scroll max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem))] min-h-0 w-full max-w-lg overflow-y-auto overscroll-y-auto rounded-t-[20px] bg-white px-4 pb-5 pt-3 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:rounded-2xl sm:p-6 sm:pb-6 md:p-7"
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="flex justify-center pb-2 sm:hidden" aria-hidden>
@@ -429,7 +396,6 @@ export default function Home() {
                     autoComplete="off"
                     autoCorrect="on"
                     enterKeyHint="done"
-                    onBlur={handleSheetFieldBlur}
                   />
                 </label>
                 <p className="rounded-xl bg-[#eef4ff] px-3 py-2 text-xs text-[#1e3a8a]">
@@ -444,7 +410,6 @@ export default function Home() {
                     placeholder="Full name"
                     autoComplete="name"
                     autoCapitalize="words"
-                    onBlur={handleSheetFieldBlur}
                     required
                   />
                 </label>
@@ -462,7 +427,6 @@ export default function Home() {
                     spellCheck={false}
                     inputMode="email"
                     enterKeyHint="send"
-                    onBlur={handleSheetFieldBlur}
                     required
                   />
                 </label>
