@@ -7,8 +7,10 @@ import logo from "../logo.png";
 
 export default function Home() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [popupStep, setPopupStep] = useState<"qualify" | "details" | "thanks">("qualify");
+  const [popupStep, setPopupStep] = useState<"qualify" | "thanks">("qualify");
   const [shareState, setShareState] = useState<"idle" | "shared" | "copied">("idle");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [form, setForm] = useState({
     role: "",
     reason: "",
@@ -20,6 +22,8 @@ export default function Home() {
     setIsPopupOpen(true);
     setPopupStep("qualify");
     setShareState("idle");
+    setSubmitError("");
+    setIsSubmitting(false);
     setForm((prev) => ({ ...prev, role: role ?? prev.role }));
   };
 
@@ -27,9 +31,31 @@ export default function Home() {
     setIsPopupOpen(false);
   };
 
-  const submitDetails = (event: FormEvent) => {
+  const submitDetails = async (event: FormEvent) => {
     event.preventDefault();
-    setPopupStep("thanks");
+    setSubmitError("");
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: form.role,
+          reason: form.reason,
+          name: form.name,
+          email: form.email,
+          source: "landing-popup",
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Submission failed");
+      }
+      setPopupStep("thanks");
+    } catch {
+      setSubmitError("Could not submit right now. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleShare = async () => {
@@ -54,9 +80,9 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-[#f4f6fb] text-[#1f2937]">
       <header className="fixed left-0 right-0 top-2 z-50 px-3 md:top-3 md:px-8">
-        <div className="mx-auto flex h-13 w-full max-w-[1200px] items-center justify-between rounded-full border border-[#111827]/10 bg-gradient-to-r from-white via-[#eef4ff] to-[#dbeafe]/90 px-4 shadow-[0_12px_28px_-18px_rgba(17,24,39,0.45)] backdrop-blur-xl md:h-16 md:px-8">
+          <div className="mx-auto flex h-12 w-full max-w-[1200px] items-center justify-between rounded-full border border-[#111827]/10 bg-gradient-to-r from-white via-[#eef4ff] to-[#dbeafe]/90 px-3.5 shadow-[0_12px_28px_-18px_rgba(17,24,39,0.45)] backdrop-blur-xl sm:h-13 sm:px-4 md:h-16 md:px-8">
           <div className="flex items-center gap-2">
-            <Image src={logo} alt="Camden Connect logo" className="h-8 w-8 rounded-full object-cover sm:h-9 sm:w-9" />
+            <Image src={logo} alt="Camden Connect logo" className="h-7 w-7 rounded-full object-cover sm:h-8 sm:w-8 md:h-9 md:w-9" />
             <p className="hidden text-base font-extrabold tracking-tight text-[#2563eb] sm:text-lg md:block md:text-xl">Camden Connect</p>
           </div>
           <Link
@@ -81,6 +107,10 @@ export default function Home() {
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#4b5563] sm:text-base md:mt-4 md:text-lg">
                 Atlas supports mentees to find the right mentor. Nova supports mentors to choose who to guide.
+              </p>
+              <p className="mt-2 max-w-xl text-xs leading-relaxed text-[#6b7280] sm:mt-3 sm:text-sm md:text-base">
+                We vet mentors and mentees for expertise and ambition—so you connect with strong talent from leading
+                companies.
               </p>
               <div className="mt-5 flex flex-wrap gap-2.5 sm:mt-6 sm:gap-3 md:mt-8">
                 <Link
@@ -171,21 +201,21 @@ export default function Home() {
 
       {isPopupOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#111827]/45 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:p-7">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:p-6 md:p-7">
             <div className="mb-4 flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-[#2563eb]">Early Access</p>
                 <div className="mt-1 flex items-center gap-2">
-                  <h3 className="text-xl font-bold text-[#111827]">Hi, I&apos;m Sami.</h3>
+                  <h3 className="text-lg font-bold text-[#111827] sm:text-xl">Hi, I&apos;m Sami.</h3>
                   <a
                     href="https://www.linkedin.com/in/samitahir1"
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Sami LinkedIn profile"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#111827]/15 text-[#2563eb] transition hover:bg-[#eef4ff]"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[#0a66c2] text-white transition hover:brightness-110 sm:h-7 sm:w-7"
                   >
                     <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
-                      <path d="M6.94 8.5A1.56 1.56 0 1 1 6.94 5.4a1.56 1.56 0 0 1 0 3.1ZM5.56 18.44h2.76V9.58H5.56v8.86ZM10.04 9.58h2.64v1.21h.04c.37-.7 1.27-1.44 2.61-1.44 2.79 0 3.3 1.84 3.3 4.22v4.87h-2.75v-4.31c0-1.03-.02-2.35-1.43-2.35-1.43 0-1.65 1.12-1.65 2.27v4.39h-2.76V9.58Z" />
+                      <path d="M19 3A2 2 0 0 1 21 5V19A2 2 0 0 1 19 21H5A2 2 0 0 1 3 19V5A2 2 0 0 1 5 3H19ZM8.34 10.33H5.67V18.5H8.34V10.33ZM7 5.8A1.55 1.55 0 1 0 7 8.9A1.55 1.55 0 0 0 7 5.8ZM18.34 13.58C18.34 11.15 17.04 10.02 15.31 10.02C13.91 10.02 13.29 10.79 12.94 11.33V10.33H10.27V18.5H12.94V13.96C12.94 12.76 13.17 11.6 14.66 11.6C16.13 11.6 16.15 12.98 16.15 14.03V18.5H18.82V13.58H18.34Z" />
                     </svg>
                   </a>
                 </div>
@@ -199,15 +229,15 @@ export default function Home() {
               </button>
             </div>
 
-            <p className="mb-5 text-sm leading-relaxed text-[#4b5563]">
+            <p className="mb-4 text-xs leading-relaxed text-[#4b5563] sm:mb-5 sm:text-sm">
               I&apos;m the developer building Camden Connect. Tell me who you are and why you want to use the platform.
             </p>
 
             {popupStep === "qualify" && (
-              <div className="space-y-4">
+              <form className="space-y-4" onSubmit={submitDetails}>
                 <div>
                   <p className="mb-2 text-sm font-semibold text-[#1f2937]">Who are you?</p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <button
                       type="button"
                       onClick={() => setForm((prev) => ({ ...prev, role: "mentor" }))}
@@ -234,19 +264,9 @@ export default function Home() {
                     placeholder="Share your reason in one or two lines..."
                   />
                 </label>
-                <button
-                  type="button"
-                  disabled={!form.role || !form.reason.trim()}
-                  onClick={() => setPopupStep("details")}
-                  className="w-full rounded-full bg-[#2563eb] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Enter
-                </button>
-              </div>
-            )}
-
-            {popupStep === "details" && (
-              <form className="space-y-4" onSubmit={submitDetails}>
+                <p className="rounded-xl bg-[#eef4ff] px-3 py-2 text-xs text-[#1e3a8a]">
+                  How we&apos;ll contact you if we launch:
+                </p>
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-[#1f2937]">Your name</span>
                   <input
@@ -270,10 +290,14 @@ export default function Home() {
                 </label>
                 <button
                   type="submit"
-                  className="w-full rounded-full bg-[#2563eb] px-5 py-2.5 text-sm font-semibold text-white"
+                  disabled={!form.role || !form.reason.trim() || !form.name.trim() || !form.email.trim() || isSubmitting}
+                  className="w-full rounded-full bg-[#2563eb] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Enter
+                  {isSubmitting ? "Submitting..." : "Enter"}
                 </button>
+                {submitError && (
+                  <p className="text-center text-xs text-[#b91c1c]">{submitError}</p>
+                )}
               </form>
             )}
 
