@@ -126,7 +126,7 @@ export default function MentorsPage() {
                 </label>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex flex-wrap items-center justify-between gap-between-buttons pt-2">
                 <button type="button" className="text-sm font-semibold text-[#737686] hover:text-[#2563eb]">Save Progress</button>
                 <button className="rounded-xl bg-[#2563eb] px-8 py-3 text-sm font-semibold text-white shadow-[0_10px_30px_-12px_rgba(37,99,235,0.7)] hover:bg-[#004ac6]" type="submit">
                   Find My Mentor

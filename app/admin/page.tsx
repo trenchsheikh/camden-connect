@@ -129,7 +129,7 @@ export default function AdminPage() {
                       ))}
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-between-buttons">
                     <button onClick={() => toggleConnection(connection.id)} className="rounded-lg border border-[#d1d5db] p-2.5 text-xs font-semibold text-[#4b5563] hover:bg-[#f3f4f6]">
                       Chat
                     </button>
@@ -178,7 +178,7 @@ export default function AdminPage() {
                   &quot;Based on your recent progress in Technical Architecture, Marcus, connect with Julian Voss. He specializes in distributed systems and is looking for advanced mentees.&quot;
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-between-buttons">
                 <button className="rounded-lg border border-[#d1d5db] bg-white px-6 py-2 text-xs font-bold text-[#111827] hover:border-[#2563eb] hover:text-[#2563eb]">
                   Explore Profile
                 </button>

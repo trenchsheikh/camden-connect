@@ -8,6 +8,22 @@
   --surface: #ffffff;
   --surface-muted: #e9f7ef;
   --border-soft: #cde7d8;
+  /**
+   * Rule of thumb: gap between adjacent buttons (stacked or in a row).
+   * ~16px mobile / ~24px sm+ for clear separation without crowding.
+   */
+  --gap-between-buttons: 1rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --gap-between-buttons: 1.5rem;
+  }
+}
+
+/** Apply with flex / grid: gap between peer actions */
+.gap-between-buttons {
+  gap: var(--gap-between-buttons);
 }
 
 @theme inline {

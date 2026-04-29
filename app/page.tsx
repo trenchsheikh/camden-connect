@@ -175,7 +175,7 @@ export default function Home() {
                 We vet mentors and mentees for expertise and ambition—so you connect with strong talent from leading
                 companies.
               </p>
-              <div className="mt-5 flex w-full max-w-xl flex-col gap-2.5 sm:mt-6 sm:flex-row sm:gap-3 md:mt-8 max-md:animate-mobile-enter-up max-md:mobile-enter-delay-3">
+              <div className="mt-5 flex w-full max-w-xl flex-col gap-between-buttons sm:mt-6 sm:flex-row md:mt-8 max-md:animate-mobile-enter-up max-md:mobile-enter-delay-3">
                 <Link
                   className="inline-flex min-h-11 flex-1 basis-0 items-center justify-center rounded-full bg-gradient-to-br from-[#172554] via-[#2563eb] to-white px-4 py-2.5 text-center text-xs font-bold text-white shadow-[0_10px_24px_-10px_rgba(23,37,84,0.55)] drop-shadow-[0_1px_1px_rgba(15,23,42,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_14px_28px_-10px_rgba(23,37,84,0.6)] active:scale-95 sm:min-h-12 sm:px-5 sm:py-2.5 sm:text-sm md:px-6 md:py-3"
                   href="/mentors"
@@ -342,7 +342,7 @@ export default function Home() {
                     Who are you?
                   </p>
                   <div
-                    className="flex flex-col gap-2 sm:flex-row"
+                    className="flex flex-col gap-between-buttons sm:flex-row"
                     role="group"
                     aria-labelledby="early-access-role-label"
                   >
@@ -428,29 +428,31 @@ export default function Home() {
             )}
 
             {popupStep === "thanks" && (
-              <div key="thanks" className="animate-modal-step-in space-y-4">
+              <div key="thanks" className="animate-modal-step-in flex flex-col gap-4">
                 <p className="rounded-xl bg-[#eef4ff] px-4 py-3 text-sm font-semibold text-[#1e3a8a]">
                   Thank you for submitting. Once we reach enough submissions, I&apos;ll launch Camden Connect.
                 </p>
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  className="min-h-[48px] w-full touch-manipulation rounded-full border border-[#111827]/15 px-5 py-3 text-base font-semibold text-[#1f2937] hover:bg-[#f8fafc] active:bg-[#f1f5f9] sm:min-h-0 sm:py-2.5 sm:text-sm"
-                >
-                  Share to invite others
-                </button>
-                {shareState !== "idle" && (
-                  <p className="text-center text-sm text-[#6b7280]">
-                    {shareState === "shared" ? "Thanks for sharing." : "Share message copied. Paste it to invite people."}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={closePopup}
-                  className="min-h-[48px] w-full touch-manipulation rounded-full bg-[#2563eb] px-5 py-3 text-base font-semibold text-white sm:min-h-0 sm:py-2.5 sm:text-sm active:bg-blue-700"
-                >
-                  Done
-                </button>
+                <div className="flex flex-col gap-between-buttons">
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    className="min-h-[48px] w-full touch-manipulation rounded-full border border-[#111827]/15 px-5 py-3 text-base font-semibold text-[#1f2937] hover:bg-[#f8fafc] active:bg-[#f1f5f9] sm:min-h-0 sm:py-2.5 sm:text-sm"
+                  >
+                    Share to invite others
+                  </button>
+                  {shareState !== "idle" && (
+                    <p className="text-center text-sm text-[#6b7280]">
+                      {shareState === "shared" ? "Thanks for sharing." : "Share message copied. Paste it to invite people."}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={closePopup}
+                    className="min-h-[48px] w-full touch-manipulation rounded-full bg-[#2563eb] px-5 py-3 text-base font-semibold text-white sm:min-h-0 sm:py-2.5 sm:text-sm active:bg-blue-700"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             )}
           </div>
