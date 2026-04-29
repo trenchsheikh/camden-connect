@@ -1,9 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import Image from "next/image";
 import logo from "../logo.png";
+
+function scrollFieldIntoView(el: HTMLElement) {
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      el.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+    }, 120);
+  });
+}
 
 export default function Home() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -11,12 +19,16 @@ export default function Home() {
   const [shareState, setShareState] = useState<"idle" | "shared" | "copied">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [sheetMaxPx, setSheetMaxPx] = useState<number | null>(null);
   const [form, setForm] = useState({
     role: "",
     reason: "",
     name: "",
     email: "",
   });
+  const closePopup = useCallback(() => {
+    setIsPopupOpen(false);
+  }, []);
 
   const openPopup = (role?: "mentor" | "mentee") => {
     setIsPopupOpen(true);
@@ -24,12 +36,72 @@ export default function Home() {
     setShareState("idle");
     setSubmitError("");
     setIsSubmitting(false);
-    setForm((prev) => ({ ...prev, role: role ?? prev.role }));
+    setForm({
+      role: role ?? "",
+      reason: "",
+      name: "",
+      email: "",
+    });
   };
 
-  const closePopup = () => {
-    setIsPopupOpen(false);
-  };
+  useLayoutEffect(() => {
+    if (!isPopupOpen) return;
+
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      document.body.style.overflow = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, [isPopupOpen]);
+
+  useLayoutEffect(() => {
+    if (!isPopupOpen) {
+      setSheetMaxPx(null);
+      return;
+    }
+
+    const vv = window.visualViewport;
+    const pad = 28;
+
+    const update = () => {
+      if (vv) {
+        setSheetMaxPx(Math.max(260, Math.round(vv.height - pad)));
+      } else {
+        setSheetMaxPx(null);
+      }
+    };
+
+    update();
+    if (!vv) return undefined;
+
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [isPopupOpen]);
+
+  useEffect(() => {
+    if (!isPopupOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closePopup();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isPopupOpen, closePopup]);
 
   const submitDetails = async (event: FormEvent) => {
     event.preventDefault();
@@ -48,11 +120,18 @@ export default function Home() {
         }),
       });
       if (!response.ok) {
-        throw new Error("Submission failed");
+        let message = "Could not submit right now. Please try again.";
+        try {
+          const data = (await response.json()) as { error?: string };
+          if (data.error) message = data.error;
+        } catch {
+          /* use default */
+        }
+        throw new Error(message);
       }
       setPopupStep("thanks");
-    } catch {
-      setSubmitError("Could not submit right now. Please try again.");
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Could not submit right now. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -107,18 +186,18 @@ export default function Home() {
       >
         <section className="mx-auto w-full max-w-[1200px] px-4 md:px-8">
           <div className="rounded-[18px] bg-gradient-to-r from-white via-[#eef4ff] to-[#dbeafe]/90 p-4 shadow-[0_20px_40px_-30px_rgba(17,24,39,0.65)] sm:p-5 md:rounded-[22px] md:p-10">
-            <div className="animate-fade-up-soft">
-              <h1 className="text-pretty text-[clamp(1.55rem,8.2vw,3.8rem)] font-extrabold leading-[1.1] text-[#111827]">
+            <div className="md:animate-fade-up-soft">
+              <h1 className="text-pretty text-[clamp(1.55rem,8.2vw,3.8rem)] font-extrabold leading-[1.1] text-[#111827] max-md:animate-mobile-enter-up">
                 The right mentor and mentee match, <em className="font-semibold not-italic text-[#2563eb]">found</em>.
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#4b5563] sm:text-base md:mt-4 md:text-lg">
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#4b5563] sm:text-base md:mt-4 md:text-lg max-md:animate-mobile-enter-up max-md:mobile-enter-delay-1">
                 Atlas supports mentees to find the right mentor. Nova supports mentors to choose who to guide.
               </p>
-              <p className="mt-2 max-w-xl text-xs leading-relaxed text-[#6b7280] sm:mt-3 sm:text-sm md:text-base">
+              <p className="mt-2 max-w-xl text-xs leading-relaxed text-[#6b7280] sm:mt-3 sm:text-sm md:text-base max-md:animate-mobile-enter-up max-md:mobile-enter-delay-2">
                 We vet mentors and mentees for expertise and ambition—so you connect with strong talent from leading
                 companies.
               </p>
-              <div className="mt-5 flex flex-wrap gap-2.5 sm:mt-6 sm:gap-3 md:mt-8">
+              <div className="mt-5 flex flex-wrap gap-2.5 sm:mt-6 sm:gap-3 md:mt-8 max-md:animate-mobile-enter-up max-md:mobile-enter-delay-3">
                 <Link
                   className="rounded-full bg-[#2563eb] px-4 py-2 text-xs font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_12px_24px_-10px_rgba(37,99,235,0.8)] active:scale-95 sm:px-5 sm:py-2.5 sm:text-sm md:px-6 md:py-3"
                   href="/mentors"
@@ -146,7 +225,9 @@ export default function Home() {
 
         <section id="how" className="px-4 py-12 md:px-8 md:py-24">
           <div className="mx-auto max-w-[1200px]">
-            <h2 className="text-2xl font-bold leading-[1.15] text-[#111827]/90 sm:text-3xl md:text-4xl">Land the right match in 3 simple steps.</h2>
+            <h2 className="text-2xl font-bold leading-[1.15] text-[#111827]/90 sm:text-3xl md:text-4xl max-md:animate-mobile-enter-up max-md:mobile-enter-delay-4">
+              Land the right match in 3 simple steps.
+            </h2>
             <div className="relative mt-6 sm:mt-8 md:mt-10">
               <div className="pointer-events-none absolute left-[12%] right-[12%] top-[52px] hidden h-px overflow-hidden rounded-full bg-[#2563eb]/15 lg:block">
                 <div className="animate-beam-flow h-full w-1/4 bg-gradient-to-r from-[#4edea3] via-[#2563eb] to-[#4edea3] shadow-[0_0_18px_2px_rgba(37,99,235,0.45)]" />
@@ -184,14 +265,20 @@ export default function Home() {
                   ),
                   text: "Start conversations and schedule sessions",
                 },
-              ].map((step) => (
-                <article key={step.text} className="relative overflow-hidden rounded-[16px] bg-gradient-to-r from-white via-[#eef4ff] to-[#dbeafe]/90 p-5 shadow-[0_12px_24px_-20px_rgba(17,24,39,0.5)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_30px_-18px_rgba(17,24,39,0.55)] sm:rounded-[20px] sm:p-6 md:p-7">
+              ].map((step, stepIndex) => {
+                const stepStagger = ["max-md:mobile-enter-delay-5", "max-md:mobile-enter-delay-6", "max-md:mobile-enter-delay-7"][stepIndex] ?? "";
+                return (
+                <article
+                  key={step.text}
+                  className={`relative overflow-hidden rounded-[16px] bg-gradient-to-r from-white via-[#eef4ff] to-[#dbeafe]/90 p-5 shadow-[0_12px_24px_-20px_rgba(17,24,39,0.5)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_30px_-18px_rgba(17,24,39,0.55)] sm:rounded-[20px] sm:p-6 md:p-7 max-md:animate-mobile-enter-up ${stepStagger}`}
+                >
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-base shadow-[0_8px_16px_-12px_rgba(17,24,39,0.5)]">
                     {step.icon}
                   </span>
                   <p className="mt-2 text-xs leading-relaxed text-[#374151] sm:mt-3 sm:text-sm">{step.text}</p>
                 </article>
-              ))}
+              );
+              })}
               </div>
             </div>
           </div>
@@ -210,32 +297,48 @@ export default function Home() {
 
       {isPopupOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-[#111827]/45 p-4 sm:items-center"
+          role="presentation"
+          className="animate-modal-backdrop fixed inset-0 z-[100] flex touch-manipulation items-end justify-center bg-[#111827]/45 p-3 sm:items-center sm:p-4"
           style={{
-            paddingTop: "max(1rem, env(safe-area-inset-top, 0px))",
-            paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
+            paddingTop: "max(0.75rem, env(safe-area-inset-top, 0px))",
+            paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
+          }}
+          onPointerDown={(e) => {
+            if (e.target === e.currentTarget) closePopup();
           }}
         >
           <div
-            className="w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-4 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:rounded-2xl sm:p-6 md:p-7"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="early-access-title"
+            className="animate-modal-sheet modal-sheet-scroll w-full max-w-lg overflow-y-auto overscroll-y-contain rounded-t-[20px] bg-white px-4 pb-5 pt-3 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:rounded-2xl sm:p-6 sm:pb-6 md:p-7"
             style={{
               maxHeight:
-                "min(92dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.5rem))",
+                sheetMaxPx != null
+                  ? `${sheetMaxPx}px`
+                  : "min(92dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.5rem))",
             }}
+            onPointerDown={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 flex items-start justify-between">
-              <div>
+            <div className="flex justify-center pb-2 sm:hidden" aria-hidden>
+              <div className="h-1 w-10 shrink-0 rounded-full bg-[#111827]/20" />
+            </div>
+
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wider text-[#2563eb]">Early Access</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <h3 className="text-lg font-bold text-[#111827] sm:text-xl">Hi, I&apos;m Sami.</h3>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <h3 id="early-access-title" className="text-lg font-bold text-[#111827] sm:text-xl">
+                    Hi, I&apos;m Sami.
+                  </h3>
                   <a
                     href="https://www.linkedin.com/in/samitahir1"
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Sami LinkedIn profile"
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[#0a66c2] text-white transition hover:brightness-110 sm:h-7 sm:w-7"
+                    className="inline-flex h-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-[#0a66c2] text-white touch-manipulation transition hover:brightness-110 sm:h-9 sm:min-h-0 sm:min-w-0 sm:px-2"
                   >
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden="true">
                       <path d="M19 3A2 2 0 0 1 21 5V19A2 2 0 0 1 19 21H5A2 2 0 0 1 3 19V5A2 2 0 0 1 5 3H19ZM8.34 10.33H5.67V18.5H8.34V10.33ZM7 5.8A1.55 1.55 0 1 0 7 8.9A1.55 1.55 0 0 0 7 5.8ZM18.34 13.58C18.34 11.15 17.04 10.02 15.31 10.02C13.91 10.02 13.29 10.79 12.94 11.33V10.33H10.27V18.5H12.94V13.96C12.94 12.76 13.17 11.6 14.66 11.6C16.13 11.6 16.15 12.98 16.15 14.03V18.5H18.82V13.58H18.34Z" />
                     </svg>
                   </a>
@@ -244,7 +347,8 @@ export default function Home() {
               <button
                 type="button"
                 onClick={closePopup}
-                className="rounded-full border border-[#111827]/15 px-2.5 py-1 text-sm text-[#6b7280] hover:bg-[#f8fafc]"
+                aria-label="Close"
+                className="flex h-11 min-h-[44px] min-w-[44px] shrink-0 touch-manipulation items-center justify-center rounded-full border border-[#111827]/15 text-lg leading-none text-[#6b7280] hover:bg-[#f8fafc] active:bg-[#f1f5f9] sm:h-9 sm:min-h-0 sm:min-w-0 sm:px-3"
               >
                 ×
               </button>
@@ -255,21 +359,33 @@ export default function Home() {
             </p>
 
             {popupStep === "qualify" && (
-              <form className="space-y-4" onSubmit={submitDetails}>
+              <form
+                key="qualify"
+                className="animate-modal-step-in space-y-4 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))]"
+                onSubmit={submitDetails}
+              >
                 <div>
-                  <p className="mb-2 text-sm font-semibold text-[#1f2937]">Who are you?</p>
-                  <div className="flex flex-col gap-2 sm:flex-row">
+                  <p className="mb-2 text-sm font-semibold text-[#1f2937]" id="early-access-role-label">
+                    Who are you?
+                  </p>
+                  <div
+                    className="flex flex-col gap-2 sm:flex-row"
+                    role="group"
+                    aria-labelledby="early-access-role-label"
+                  >
                     <button
                       type="button"
+                      aria-pressed={form.role === "mentor"}
                       onClick={() => setForm((prev) => ({ ...prev, role: "mentor" }))}
-                      className={`rounded-full px-4 py-2 text-sm font-semibold ${form.role === "mentor" ? "bg-[#2563eb] text-white" : "border border-[#111827]/15 text-[#374151]"}`}
+                      className={`min-h-[44px] touch-manipulation rounded-full px-4 py-3 text-sm font-semibold sm:min-h-0 sm:py-2 ${form.role === "mentor" ? "bg-[#2563eb] text-white" : "border border-[#111827]/15 text-[#374151] active:bg-[#f8fafc]"}`}
                     >
                       Mentor
                     </button>
                     <button
                       type="button"
+                      aria-pressed={form.role === "mentee"}
                       onClick={() => setForm((prev) => ({ ...prev, role: "mentee" }))}
-                      className={`rounded-full px-4 py-2 text-sm font-semibold ${form.role === "mentee" ? "bg-[#2563eb] text-white" : "border border-[#111827]/15 text-[#374151]"}`}
+                      className={`min-h-[44px] touch-manipulation rounded-full px-4 py-3 text-left text-sm font-semibold sm:min-h-0 sm:py-2 ${form.role === "mentee" ? "bg-[#2563eb] text-white" : "border border-[#111827]/15 text-[#374151] active:bg-[#f8fafc]"}`}
                     >
                       Mentee looking for mentor
                     </button>
@@ -281,9 +397,12 @@ export default function Home() {
                     rows={3}
                     value={form.reason}
                     onChange={(event) => setForm((prev) => ({ ...prev, reason: event.target.value }))}
-                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-2.5 text-base outline-none focus:border-[#2563eb] md:text-sm"
+                    onFocus={(e) => scrollFieldIntoView(e.currentTarget)}
+                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none focus:border-[#2563eb] md:py-2.5 md:text-sm"
                     placeholder="Share your reason in one or two lines..."
                     autoComplete="off"
+                    autoCorrect="on"
+                    enterKeyHint="done"
                   />
                 </label>
                 <p className="rounded-xl bg-[#eef4ff] px-3 py-2 text-xs text-[#1e3a8a]">
@@ -294,9 +413,11 @@ export default function Home() {
                   <input
                     value={form.name}
                     onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-2.5 text-base outline-none focus:border-[#2563eb] md:text-sm"
+                    onFocus={(e) => scrollFieldIntoView(e.currentTarget)}
+                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none focus:border-[#2563eb] md:py-2.5 md:text-sm"
                     placeholder="Full name"
                     autoComplete="name"
+                    autoCapitalize="words"
                     required
                   />
                 </label>
@@ -306,43 +427,57 @@ export default function Home() {
                     type="email"
                     value={form.email}
                     onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-2.5 text-base outline-none focus:border-[#2563eb] md:text-sm"
+                    onFocus={(e) => scrollFieldIntoView(e.currentTarget)}
+                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none focus:border-[#2563eb] md:py-2.5 md:text-sm"
                     placeholder="you@email.com"
                     autoComplete="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     inputMode="email"
+                    enterKeyHint="send"
                     required
                   />
                 </label>
                 <button
                   type="submit"
                   disabled={!form.role || !form.reason.trim() || !form.name.trim() || !form.email.trim() || isSubmitting}
-                  className="w-full rounded-full bg-[#2563eb] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-[48px] w-full touch-manipulation rounded-full bg-[#2563eb] px-5 py-3 text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 sm:py-2.5 sm:text-sm active:bg-blue-700"
                 >
-                  {isSubmitting ? "Submitting..." : "Enter"}
+                  {isSubmitting ? "Submitting…" : "Enter"}
                 </button>
                 {submitError && (
-                  <p className="text-center text-xs text-[#b91c1c]">{submitError}</p>
+                  <p className="text-pretty text-center text-sm text-[#b91c1c]" role="alert">
+                    {submitError}
+                  </p>
                 )}
               </form>
             )}
 
             {popupStep === "thanks" && (
-              <div className="space-y-4">
+              <div key="thanks" className="animate-modal-step-in space-y-4">
                 <p className="rounded-xl bg-[#eef4ff] px-4 py-3 text-sm font-semibold text-[#1e3a8a]">
                   Thank you for submitting. Once we reach enough submissions, I&apos;ll launch Camden Connect.
                 </p>
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="w-full rounded-full border border-[#111827]/15 px-5 py-2.5 text-sm font-semibold text-[#1f2937] hover:bg-[#f8fafc]"
+                  className="min-h-[48px] w-full touch-manipulation rounded-full border border-[#111827]/15 px-5 py-3 text-base font-semibold text-[#1f2937] hover:bg-[#f8fafc] active:bg-[#f1f5f9] sm:min-h-0 sm:py-2.5 sm:text-sm"
                 >
                   Share to invite others
                 </button>
                 {shareState !== "idle" && (
-                  <p className="text-center text-xs text-[#6b7280]">
+                  <p className="text-center text-sm text-[#6b7280]">
                     {shareState === "shared" ? "Thanks for sharing." : "Share message copied. Paste it to invite people."}
                   </p>
                 )}
+                <button
+                  type="button"
+                  onClick={closePopup}
+                  className="min-h-[48px] w-full touch-manipulation rounded-full bg-[#2563eb] px-5 py-3 text-base font-semibold text-white sm:min-h-0 sm:py-2.5 sm:text-sm active:bg-blue-700"
+                >
+                  Done
+                </button>
               </div>
             )}
           </div>

@@ -41,6 +41,132 @@ body {
   }
 }
 
+/* iOS: momentum scrolling inside modal sheets */
+.modal-sheet-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Modal: backdrop + sheet entry */
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-sheet-from-bottom {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 22%, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes modal-sheet-centered {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes modal-step-content-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-modal-backdrop {
+  animation: modal-backdrop-in 0.26s ease-out both;
+}
+
+.animate-modal-sheet {
+  animation: modal-sheet-from-bottom 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@media (min-width: 640px) {
+  .animate-modal-sheet {
+    animation: modal-sheet-centered 0.34s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+}
+
+.animate-modal-step-in {
+  animation: modal-step-content-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Mobile-only: page sections enter on load */
+@media (max-width: 767px) {
+  @keyframes mobile-enter-up {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 18px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .animate-mobile-enter-up {
+    animation: mobile-enter-up 0.58s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .mobile-enter-delay-1 {
+    animation-delay: 75ms;
+  }
+
+  .mobile-enter-delay-2 {
+    animation-delay: 150ms;
+  }
+
+  .mobile-enter-delay-3 {
+    animation-delay: 225ms;
+  }
+
+  .mobile-enter-delay-4 {
+    animation-delay: 300ms;
+  }
+
+  .mobile-enter-delay-5 {
+    animation-delay: 375ms;
+  }
+
+  .mobile-enter-delay-6 {
+    animation-delay: 450ms;
+  }
+
+  .mobile-enter-delay-7 {
+    animation-delay: 525ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-modal-backdrop,
+  .animate-modal-sheet,
+  .animate-modal-step-in,
+  .animate-mobile-enter-up,
+  .animate-fade-up-soft,
+  .animate-beam-flow {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 @keyframes float-soft {
   0%,
   100% {
