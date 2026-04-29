@@ -34,8 +34,6 @@ export default function Home() {
   const backdropRef = useRef<HTMLDivElement>(null);
   const backdropPointerDownRef = useRef<EventTarget | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const mentorButtonRef = useRef<HTMLButtonElement>(null);
-  const menteeButtonRef = useRef<HTMLButtonElement>(null);
 
   const closePopup = useCallback(() => {
     setIsPopupOpen(false);
@@ -177,28 +175,25 @@ export default function Home() {
     [focusFieldByName]
   );
 
-  /** Arrow-key navigation between role buttons; Enter selects + advances to the reason field. */
+  const selectRole = useCallback(
+    (role: "mentor" | "mentee") => {
+      setForm((prev) => ({ ...prev, role }));
+      if (submitError) setSubmitError("");
+    },
+    [submitError]
+  );
+
+  /** Press Enter on the selected role to move into the next form field. */
   const handleRoleKeyDown = useCallback(
     (role: "mentor" | "mentee") =>
-      (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-        if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-          event.preventDefault();
-          (role === "mentor" ? menteeButtonRef : mentorButtonRef).current?.focus();
-          return;
-        }
-        if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-          event.preventDefault();
-          (role === "mentor" ? menteeButtonRef : mentorButtonRef).current?.focus();
-          return;
-        }
+      (event: ReactKeyboardEvent<HTMLInputElement>) => {
         if (event.key === "Enter") {
           event.preventDefault();
-          setForm((prev) => ({ ...prev, role }));
-          if (submitError) setSubmitError("");
+          selectRole(role);
           window.setTimeout(() => focusFieldByName("reason"), 0);
         }
       },
-    [focusFieldByName, submitError]
+    [focusFieldByName, selectRole]
   );
 
   useEffect(() => {
@@ -540,36 +535,42 @@ export default function Home() {
                     role="radiogroup"
                     aria-labelledby="early-access-role-label"
                   >
-                    <button
-                      ref={mentorButtonRef}
-                      type="button"
-                      role="radio"
-                      aria-checked={form.role === "mentor"}
-                      tabIndex={form.role === "mentee" ? -1 : 0}
-                      onClick={() => {
-                        setForm((prev) => ({ ...prev, role: "mentor" }));
-                        if (submitError) setSubmitError("");
-                      }}
-                      onKeyDown={handleRoleKeyDown("mentor")}
-                      className={`min-h-[44px] touch-manipulation rounded-full px-4 py-3 text-center text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/40 sm:min-h-0 sm:py-2 ${form.role === "mentor" ? "bg-[#2563eb] text-white" : "border border-[#111827]/15 text-[#374151] active:bg-[#f8fafc]"}`}
+                    <label
+                      className={`relative flex min-h-[48px] flex-1 cursor-pointer touch-manipulation items-center justify-center rounded-full px-4 py-3 text-center text-sm font-semibold transition-colors focus-within:ring-2 focus-within:ring-[#2563eb]/40 sm:min-h-0 sm:py-2 ${
+                        form.role === "mentor"
+                          ? "bg-[#2563eb] text-white shadow-[0_8px_18px_-12px_rgba(37,99,235,0.9)]"
+                          : "border border-[#111827]/15 text-[#374151] active:bg-[#f8fafc]"
+                      }`}
                     >
+                      <input
+                        className="sr-only"
+                        type="radio"
+                        name="role"
+                        value="mentor"
+                        checked={form.role === "mentor"}
+                        onChange={() => selectRole("mentor")}
+                        onKeyDown={handleRoleKeyDown("mentor")}
+                      />
                       Mentor
-                    </button>
-                    <button
-                      ref={menteeButtonRef}
-                      type="button"
-                      role="radio"
-                      aria-checked={form.role === "mentee"}
-                      tabIndex={form.role === "mentee" ? 0 : -1}
-                      onClick={() => {
-                        setForm((prev) => ({ ...prev, role: "mentee" }));
-                        if (submitError) setSubmitError("");
-                      }}
-                      onKeyDown={handleRoleKeyDown("mentee")}
-                      className={`min-h-[44px] touch-manipulation rounded-full px-4 py-3 text-center text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/40 sm:min-h-0 sm:py-2 ${form.role === "mentee" ? "bg-[#2563eb] text-white" : "border border-[#111827]/15 text-[#374151] active:bg-[#f8fafc]"}`}
+                    </label>
+                    <label
+                      className={`relative flex min-h-[48px] flex-1 cursor-pointer touch-manipulation items-center justify-center rounded-full px-4 py-3 text-center text-sm font-semibold transition-colors focus-within:ring-2 focus-within:ring-[#2563eb]/40 sm:min-h-0 sm:py-2 ${
+                        form.role === "mentee"
+                          ? "bg-[#2563eb] text-white shadow-[0_8px_18px_-12px_rgba(37,99,235,0.9)]"
+                          : "border border-[#111827]/15 text-[#374151] active:bg-[#f8fafc]"
+                      }`}
                     >
+                      <input
+                        className="sr-only"
+                        type="radio"
+                        name="role"
+                        value="mentee"
+                        checked={form.role === "mentee"}
+                        onChange={() => selectRole("mentee")}
+                        onKeyDown={handleRoleKeyDown("mentee")}
+                      />
                       Mentee looking for mentor
-                    </button>
+                    </label>
                   </div>
                 </div>
                 <label className="block">
