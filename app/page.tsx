@@ -38,6 +38,9 @@ export default function Home() {
   const formRef = useRef<HTMLFormElement>(null);
 
   const closePopup = useCallback(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     setIsPopupOpen(false);
   }, []);
 
@@ -79,16 +82,15 @@ export default function Home() {
   }, [isPopupOpen]);
 
   /**
-   * iOS Safari: track the visual viewport so we can:
-   *  1) Shrink the modal area to sit above the on-screen keyboard.
-   *  2) Nudge the sheet's overflow layer so panning works after the keyboard hides.
+   * iOS Safari: keep the sheet above the on-screen keyboard without moving
+   * the backdrop itself. Changing fixed inset/bottom while the keyboard animates
+   * can leave Safari with a stale hit-test layer where taps stop registering.
    */
   useEffect(() => {
     if (!isPopupOpen) return;
 
     const backdrop = backdropRef.current;
-    const sheet = sheetRef.current;
-    if (!backdrop || !sheet) return;
+    if (!backdrop) return;
 
     const vv = window.visualViewport;
     let frame = 0;
@@ -104,26 +106,25 @@ export default function Home() {
         }
         backdrop.style.setProperty("--cc-keyboard", `${keyboard}px`);
         backdrop.style.setProperty("--cc-vv", `${viewportH}px`);
-        backdrop.style.bottom = `${keyboard}px`;
-
-        const prev = sheet.style.overflowY;
-        sheet.style.overflowY = "hidden";
-        void sheet.offsetHeight;
-        sheet.style.overflowY = prev || "auto";
+        backdrop.style.paddingBottom = `calc(max(0.75rem, env(safe-area-inset-bottom, 0px)) + ${keyboard}px)`;
       });
     };
 
     apply();
     vv?.addEventListener("resize", apply);
     vv?.addEventListener("scroll", apply);
+    window.addEventListener("focusin", apply);
+    window.addEventListener("focusout", apply);
     window.addEventListener("orientationchange", apply);
 
     return () => {
       cancelAnimationFrame(frame);
       vv?.removeEventListener("resize", apply);
       vv?.removeEventListener("scroll", apply);
+      window.removeEventListener("focusin", apply);
+      window.removeEventListener("focusout", apply);
       window.removeEventListener("orientationchange", apply);
-      backdrop.style.bottom = "";
+      backdrop.style.paddingBottom = "";
     };
   }, [isPopupOpen]);
 
@@ -521,7 +522,6 @@ export default function Home() {
             aria-modal="true"
             aria-labelledby="early-access-title"
             className="animate-modal-sheet modal-sheet-scroll max-h-full min-h-0 w-full max-w-lg overflow-y-auto overscroll-y-contain rounded-t-[20px] bg-white px-4 pb-5 pt-3 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:rounded-2xl sm:p-6 sm:pb-6 md:p-7"
-            onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="flex justify-center pb-2 sm:hidden" aria-hidden>
               <div className="h-1 w-10 shrink-0 rounded-full bg-[#111827]/20" />
@@ -549,6 +549,10 @@ export default function Home() {
               </div>
               <button
                 type="button"
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  closePopup();
+                }}
                 onClick={closePopup}
                 aria-label="Close"
                 className="flex h-11 min-h-[44px] min-w-[44px] shrink-0 touch-manipulation items-center justify-center rounded-full border border-[#111827]/15 text-lg leading-none text-[#6b7280] hover:bg-[#f8fafc] active:bg-[#f1f5f9] sm:h-9 sm:min-h-0 sm:min-w-0 sm:px-3"
@@ -569,7 +573,7 @@ export default function Home() {
                 onSubmit={submitDetails}
                 noValidate
               >
-                <div className="md:hidden">
+                <div>
                   <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[#6b7280]">
                     <span>Step {mobileFormStep + 1} of 3</span>
                     <span>{["Role", "Reason", "Contact"][mobileFormStep]}</span>
@@ -582,7 +586,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className={mobileFormStep === 0 ? "block" : "hidden md:block"}>
+                <div className={mobileFormStep === 0 ? "block" : "hidden"}>
                   <p className="mb-2 text-sm font-semibold text-[#1f2937]" id="early-access-role-label">
                     Who are you?
                   </p>
@@ -629,7 +633,7 @@ export default function Home() {
                     </label>
                   </div>
                 </div>
-                <label className={mobileFormStep === 1 ? "block" : "hidden md:block"}>
+                <label className={mobileFormStep === 1 ? "block" : "hidden"}>
                   <span className="mb-2 block text-sm font-semibold text-[#1f2937]">Why do you want to use the platform?</span>
                   <textarea
                     name="reason"
@@ -646,7 +650,7 @@ export default function Home() {
                     maxLength={500}
                   />
                 </label>
-                <div className={mobileFormStep === 2 ? "space-y-4" : "hidden space-y-4 md:block"}>
+                <div className={mobileFormStep === 2 ? "space-y-4" : "hidden"}>
                   <p className="rounded-xl bg-[#eef4ff] px-3 py-2 text-xs text-[#1e3a8a]">
                     How we&apos;ll contact you if we launch:
                   </p>
@@ -695,7 +699,7 @@ export default function Home() {
                     {submitError}
                   </p>
                 )}
-                <div className="flex gap-3 md:hidden">
+                <div className="flex gap-3">
                   {mobileFormStep > 0 && (
                     <button
                       type="button"
@@ -724,14 +728,6 @@ export default function Home() {
                     </button>
                   )}
                 </div>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  aria-busy={isSubmitting}
-                  className="hidden min-h-[48px] w-full touch-manipulation rounded-full bg-[#2563eb] px-5 py-3 text-base font-semibold text-white shadow-[0_8px_20px_-10px_rgba(37,99,235,0.7)] transition-[transform,background-color] disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99] active:bg-[#1d4ed8] md:block md:min-h-0 md:py-2.5 md:text-sm"
-                >
-                  {isSubmitting ? "Submitting..." : "Submit"}
-                </button>
               </form>
             )}
 
