@@ -1,28 +1,79 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f7f8;
-  --foreground: #141414;
-  --accent: #c10f2e;
+  --background: #f3fbf6;
+  --foreground: #143323;
+  --accent: #2f9e66;
+  --accent-strong: #1f7a4d;
+  --surface: #ffffff;
+  --surface-muted: #e9f7ef;
+  --border-soft: #cde7d8;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border-soft: var(--border-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes fade-up-soft {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-float-soft {
+  animation: float-soft 4.6s ease-in-out infinite;
+}
+
+.animate-fade-up-soft {
+  animation: fade-up-soft 500ms ease-out both;
+}
+
+@keyframes beam-flow {
+  0% {
+    transform: translateX(-8%);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(108%);
+    opacity: 0;
+  }
+}
+
+.animate-beam-flow {
+  animation: beam-flow 3.4s ease-in-out infinite;
 }
