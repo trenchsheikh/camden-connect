@@ -24,7 +24,7 @@ export type Mentor = {
   bio: string;
 };
 
-export const clubCode = "CAMDEN-UNITED-2026";
+export const clubCode = "CAMDEN-CONNECT-2026";
 
 export const codeOfConduct = [
   "Treat each other with respect and confidentiality.",

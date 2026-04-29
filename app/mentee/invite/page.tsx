@@ -23,7 +23,7 @@ export default function MenteeInvitePage() {
       <h1 className="text-3xl font-semibold text-emerald-950">Mentee invite onboarding</h1>
       <form onSubmit={verifyCode} className="space-y-3 rounded-2xl border border-border-soft bg-surface p-6 shadow-sm">
         <label className="block text-sm font-medium">Club invite code</label>
-        <input className="w-full rounded-lg border border-border-soft p-3" value={enteredCode} onChange={(e) => setEnteredCode(e.target.value)} placeholder="CAMDEN-UNITED-2026" />
+        <input className="w-full rounded-lg border border-border-soft p-3" value={enteredCode} onChange={(e) => setEnteredCode(e.target.value)} placeholder={clubCode} />
         <button type="submit" className="rounded-lg bg-accent px-4 py-2 font-medium text-white transition hover:bg-accent-strong">
           Verify code
         </button>

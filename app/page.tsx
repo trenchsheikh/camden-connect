@@ -78,27 +78,33 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f4f6fb] text-[#1f2937]">
-      <header className="fixed left-0 right-0 top-2 z-50 px-3 md:top-3 md:px-8">
+    <div className="flex min-h-[100dvh] flex-col bg-[#f4f6fb] text-[#1f2937]">
+      <div className="fixed left-0 right-0 top-0 z-50">
+        <div className="bg-white" style={{ height: "env(safe-area-inset-top, 0px)" }} aria-hidden />
+        <header className="px-3 pt-2 md:px-8 md:pt-3">
           <div className="mx-auto flex h-12 w-full max-w-[1200px] items-center justify-between rounded-full border border-[#111827]/10 bg-gradient-to-r from-white via-[#eef4ff] to-[#dbeafe]/90 px-3.5 shadow-[0_12px_28px_-18px_rgba(17,24,39,0.45)] backdrop-blur-xl sm:h-13 sm:px-4 md:h-16 md:px-8">
-          <div className="flex items-center gap-2">
-            <Image src={logo} alt="Camden Connect logo" className="h-7 w-7 rounded-full object-cover sm:h-8 sm:w-8 md:h-9 md:w-9" />
-            <p className="hidden text-base font-extrabold tracking-tight text-[#2563eb] sm:text-lg md:block md:text-xl">Camden Connect</p>
+            <div className="flex items-center gap-2">
+              <Image src={logo} alt="Camden Connect logo" className="h-7 w-7 rounded-full object-cover sm:h-8 sm:w-8 md:h-9 md:w-9" />
+              <p className="hidden text-base font-extrabold tracking-tight text-[#2563eb] sm:text-lg md:block md:text-xl">Camden Connect</p>
+            </div>
+            <Link
+              className="rounded-full bg-[#2563eb] px-3.5 py-1.5 text-xs font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_12px_24px_-10px_rgba(37,99,235,0.8)] active:scale-95 sm:px-4 sm:py-2 sm:text-sm md:px-5"
+              href="/mentee/invite"
+              onClick={(event) => {
+                event.preventDefault();
+                openPopup();
+              }}
+            >
+              Get started
+            </Link>
           </div>
-          <Link
-            className="rounded-full bg-[#2563eb] px-3.5 py-1.5 text-xs font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_12px_24px_-10px_rgba(37,99,235,0.8)] active:scale-95 sm:px-4 sm:py-2 sm:text-sm md:px-5"
-            href="/mentee/invite"
-            onClick={(event) => {
-              event.preventDefault();
-              openPopup();
-            }}
-          >
-            Get started
-          </Link>
-        </div>
-      </header>
+        </header>
+      </div>
 
-      <main id="main-content" className="flex-1 pb-24 pt-24 sm:pt-28 md:pt-36">
+      <main
+        id="main-content"
+        className="flex-1 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] pt-[calc(0.5rem+3.5rem+env(safe-area-inset-top,0px))] sm:pb-[calc(6.25rem+env(safe-area-inset-bottom,0px))] sm:pt-[calc(0.75rem+3.75rem+env(safe-area-inset-top,0px))] md:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] md:pt-[calc(1rem+4.5rem+env(safe-area-inset-top,0px))]"
+      >
         <section className="mx-auto w-full max-w-[1200px] px-4 md:px-8">
           <div className="rounded-[18px] bg-gradient-to-r from-white via-[#eef4ff] to-[#dbeafe]/90 p-4 shadow-[0_20px_40px_-30px_rgba(17,24,39,0.65)] sm:p-5 md:rounded-[22px] md:p-10">
             <div className="animate-fade-up-soft">
@@ -193,15 +199,30 @@ export default function Home() {
 
       </main>
 
-      <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-[#111827]/10 bg-gradient-to-r from-white via-[#eef4ff] to-[#dbeafe]/90 backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-[1200px] items-center justify-center px-4 py-3 text-xs sm:px-5 sm:py-4 sm:text-sm md:px-8">
-          <p className="text-center font-['Times_New_Roman'] italic text-[#6b7280]">When one person is seen, a whole future changes.</p>
+      <footer className="fixed inset-x-0 bottom-0 z-40 flex flex-col">
+        <div className="border-t border-[#111827]/10 bg-gradient-to-r from-white via-[#eef4ff] to-[#dbeafe]/90 backdrop-blur-sm">
+          <div className="mx-auto flex w-full max-w-[1200px] items-center justify-center px-4 py-3 text-xs sm:px-5 sm:py-4 sm:text-sm md:px-8">
+            <p className="text-center font-['Times_New_Roman'] italic text-[#6b7280]">When one person is seen, a whole future changes.</p>
+          </div>
         </div>
+        <div className="shrink-0 bg-white" style={{ height: "env(safe-area-inset-bottom, 0px)" }} aria-hidden />
       </footer>
 
       {isPopupOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#111827]/45 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:p-6 md:p-7">
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-[#111827]/45 p-4 sm:items-center"
+          style={{
+            paddingTop: "max(1rem, env(safe-area-inset-top, 0px))",
+            paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
+          }}
+        >
+          <div
+            className="w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-4 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:rounded-2xl sm:p-6 md:p-7"
+            style={{
+              maxHeight:
+                "min(92dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.5rem))",
+            }}
+          >
             <div className="mb-4 flex items-start justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-[#2563eb]">Early Access</p>
@@ -260,8 +281,9 @@ export default function Home() {
                     rows={3}
                     value={form.reason}
                     onChange={(event) => setForm((prev) => ({ ...prev, reason: event.target.value }))}
-                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-2.5 text-sm outline-none focus:border-[#2563eb]"
+                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-2.5 text-base outline-none focus:border-[#2563eb] md:text-sm"
                     placeholder="Share your reason in one or two lines..."
+                    autoComplete="off"
                   />
                 </label>
                 <p className="rounded-xl bg-[#eef4ff] px-3 py-2 text-xs text-[#1e3a8a]">
@@ -272,8 +294,9 @@ export default function Home() {
                   <input
                     value={form.name}
                     onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-2.5 text-sm outline-none focus:border-[#2563eb]"
+                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-2.5 text-base outline-none focus:border-[#2563eb] md:text-sm"
                     placeholder="Full name"
+                    autoComplete="name"
                     required
                   />
                 </label>
@@ -283,8 +306,10 @@ export default function Home() {
                     type="email"
                     value={form.email}
                     onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-2.5 text-sm outline-none focus:border-[#2563eb]"
+                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-2.5 text-base outline-none focus:border-[#2563eb] md:text-sm"
                     placeholder="you@email.com"
+                    autoComplete="email"
+                    inputMode="email"
                     required
                   />
                 </label>

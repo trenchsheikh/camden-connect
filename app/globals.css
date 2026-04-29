@@ -22,10 +22,23 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  background-color: #ffffff;
+}
+
 body {
-  background: var(--background);
+  background: #f4f6fb;
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* iOS Safari: 16px+ on form controls avoids automatic zoom on focus */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 @keyframes float-soft {
