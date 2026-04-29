@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { FocusEvent, FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import logo from "../logo.png";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Home() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -18,6 +20,8 @@ export default function Home() {
     email: "",
   });
   const sheetRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const backdropPointerDownRef = useRef<EventTarget | null>(null);
 
   const closePopup = useCallback(() => {
     setIsPopupOpen(false);
@@ -59,40 +63,67 @@ export default function Home() {
     };
   }, [isPopupOpen]);
 
-  /** iOS Safari: after the keyboard closes, the sheet scroll layer often stops accepting pans until layout is nudged. */
+  /**
+   * iOS Safari: track the visual viewport so we can:
+   *  1) Shrink the modal area to sit above the on-screen keyboard.
+   *  2) Nudge the sheet's overflow layer so panning works after the keyboard hides.
+   */
   useEffect(() => {
     if (!isPopupOpen) return;
 
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const backdrop = backdropRef.current;
+    const sheet = sheetRef.current;
+    if (!backdrop || !sheet) return;
 
-    const nudgeSheetScroll = () => {
-      const el = sheetRef.current;
-      if (!el) return;
-      requestAnimationFrame(() => {
-        const prev = el.style.overflow;
-        el.style.overflow = "hidden";
-        void el.offsetHeight;
-        el.style.overflow = prev || "";
-        void el.offsetHeight;
+    const vv = window.visualViewport;
+    let frame = 0;
+
+    const apply = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        let keyboard = 0;
+        let viewportH = window.innerHeight;
+        if (vv) {
+          keyboard = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+          viewportH = vv.height;
+        }
+        backdrop.style.setProperty("--cc-keyboard", `${keyboard}px`);
+        backdrop.style.setProperty("--cc-vv", `${viewportH}px`);
+        backdrop.style.bottom = `${keyboard}px`;
+
+        const prev = sheet.style.overflowY;
+        sheet.style.overflowY = "hidden";
+        void sheet.offsetHeight;
+        sheet.style.overflowY = prev || "auto";
       });
     };
 
-    const onViewportChange = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(nudgeSheetScroll, 50);
-    };
-
-    const vv = window.visualViewport;
-    nudgeSheetScroll();
-    vv?.addEventListener("resize", onViewportChange);
-    vv?.addEventListener("scroll", onViewportChange);
+    apply();
+    vv?.addEventListener("resize", apply);
+    vv?.addEventListener("scroll", apply);
+    window.addEventListener("orientationchange", apply);
 
     return () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      vv?.removeEventListener("resize", onViewportChange);
-      vv?.removeEventListener("scroll", onViewportChange);
+      cancelAnimationFrame(frame);
+      vv?.removeEventListener("resize", apply);
+      vv?.removeEventListener("scroll", apply);
+      window.removeEventListener("orientationchange", apply);
+      backdrop.style.bottom = "";
     };
   }, [isPopupOpen]);
+
+  /** When a field gains focus on iOS, scroll it into view inside the sheet after the keyboard animates. */
+  const handleFieldFocus = useCallback((event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const target = event.currentTarget;
+    window.setTimeout(() => {
+      if (!target.isConnected) return;
+      try {
+        target.scrollIntoView({ block: "center", behavior: "smooth" });
+      } catch {
+        target.scrollIntoView();
+      }
+    }, 320);
+  }, []);
 
   useEffect(() => {
     if (!isPopupOpen) return;
@@ -105,6 +136,32 @@ export default function Home() {
 
   const submitDetails = async (event: FormEvent) => {
     event.preventDefault();
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
+    const role = form.role;
+    const reason = form.reason.trim();
+    const name = form.name.trim();
+    const email = form.email.trim();
+
+    if (!role) {
+      setSubmitError("Please pick whether you're a mentor or a mentee.");
+      return;
+    }
+    if (!reason) {
+      setSubmitError("Tell us in a line or two why you'd like to use Camden Connect.");
+      return;
+    }
+    if (!name) {
+      setSubmitError("Please add your name so we know who to reach.");
+      return;
+    }
+    if (!EMAIL_RE.test(email)) {
+      setSubmitError("Please enter a valid email like you@example.com.");
+      return;
+    }
+
     setSubmitError("");
     setIsSubmitting(true);
     try {
@@ -112,10 +169,10 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          role: form.role,
-          reason: form.reason,
-          name: form.name,
-          email: form.email,
+          role,
+          reason,
+          name,
+          email,
           source: "landing-popup",
         }),
       });
@@ -296,6 +353,7 @@ export default function Home() {
 
       {isPopupOpen && (
         <div
+          ref={backdropRef}
           role="presentation"
           className="animate-modal-backdrop fixed inset-0 z-[100] flex min-h-0 touch-manipulation items-end justify-center bg-[#111827]/45 p-3 sm:items-center sm:p-4"
           style={{
@@ -303,7 +361,16 @@ export default function Home() {
             paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
           }}
           onPointerDown={(e) => {
-            if (e.target === e.currentTarget) closePopup();
+            backdropPointerDownRef.current = e.target;
+          }}
+          onPointerUp={(e) => {
+            const startedOnBackdrop =
+              backdropPointerDownRef.current === e.currentTarget && e.target === e.currentTarget;
+            backdropPointerDownRef.current = null;
+            if (startedOnBackdrop) closePopup();
+          }}
+          onPointerCancel={() => {
+            backdropPointerDownRef.current = null;
           }}
         >
           <div
@@ -311,7 +378,7 @@ export default function Home() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="early-access-title"
-            className="animate-modal-sheet modal-sheet-scroll max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem))] min-h-0 w-full max-w-lg overflow-y-auto overscroll-y-auto rounded-t-[20px] bg-white px-4 pb-5 pt-3 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:rounded-2xl sm:p-6 sm:pb-6 md:p-7"
+            className="animate-modal-sheet modal-sheet-scroll max-h-full min-h-0 w-full max-w-lg overflow-y-auto overscroll-y-contain rounded-t-[20px] bg-white px-4 pb-5 pt-3 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:rounded-2xl sm:p-6 sm:pb-6 md:p-7"
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="flex justify-center pb-2 sm:hidden" aria-hidden>
@@ -357,6 +424,7 @@ export default function Home() {
                 key="qualify"
                 className="animate-modal-step-in space-y-4 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))]"
                 onSubmit={submitDetails}
+                noValidate
               >
                 <div>
                   <p className="mb-2 text-sm font-semibold text-[#1f2937]" id="early-access-role-label">
@@ -364,22 +432,30 @@ export default function Home() {
                   </p>
                   <div
                     className="flex flex-col gap-between-buttons sm:flex-row"
-                    role="group"
+                    role="radiogroup"
                     aria-labelledby="early-access-role-label"
                   >
                     <button
                       type="button"
-                      aria-pressed={form.role === "mentor"}
-                      onClick={() => setForm((prev) => ({ ...prev, role: "mentor" }))}
-                      className={`min-h-[44px] touch-manipulation rounded-full px-4 py-3 text-sm font-semibold sm:min-h-0 sm:py-2 ${form.role === "mentor" ? "bg-[#2563eb] text-white" : "border border-[#111827]/15 text-[#374151] active:bg-[#f8fafc]"}`}
+                      role="radio"
+                      aria-checked={form.role === "mentor"}
+                      onClick={() => {
+                        setForm((prev) => ({ ...prev, role: "mentor" }));
+                        if (submitError) setSubmitError("");
+                      }}
+                      className={`min-h-[44px] touch-manipulation rounded-full px-4 py-3 text-center text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/40 sm:min-h-0 sm:py-2 ${form.role === "mentor" ? "bg-[#2563eb] text-white" : "border border-[#111827]/15 text-[#374151] active:bg-[#f8fafc]"}`}
                     >
                       Mentor
                     </button>
                     <button
                       type="button"
-                      aria-pressed={form.role === "mentee"}
-                      onClick={() => setForm((prev) => ({ ...prev, role: "mentee" }))}
-                      className={`min-h-[44px] touch-manipulation rounded-full px-4 py-3 text-left text-sm font-semibold sm:min-h-0 sm:py-2 ${form.role === "mentee" ? "bg-[#2563eb] text-white" : "border border-[#111827]/15 text-[#374151] active:bg-[#f8fafc]"}`}
+                      role="radio"
+                      aria-checked={form.role === "mentee"}
+                      onClick={() => {
+                        setForm((prev) => ({ ...prev, role: "mentee" }));
+                        if (submitError) setSubmitError("");
+                      }}
+                      className={`min-h-[44px] touch-manipulation rounded-full px-4 py-3 text-center text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/40 sm:min-h-0 sm:py-2 ${form.role === "mentee" ? "bg-[#2563eb] text-white" : "border border-[#111827]/15 text-[#374151] active:bg-[#f8fafc]"}`}
                     >
                       Mentee looking for mentor
                     </button>
@@ -388,14 +464,17 @@ export default function Home() {
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-[#1f2937]">Why do you want to use the platform?</span>
                   <textarea
+                    name="reason"
                     rows={3}
                     value={form.reason}
                     onChange={(event) => setForm((prev) => ({ ...prev, reason: event.target.value }))}
-                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none focus:border-[#2563eb] md:py-2.5 md:text-sm"
+                    onFocus={handleFieldFocus}
+                    className="w-full resize-none rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none transition-colors focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 md:py-2.5 md:text-sm"
                     placeholder="Share your reason in one or two lines..."
                     autoComplete="off"
                     autoCorrect="on"
-                    enterKeyHint="done"
+                    enterKeyHint="next"
+                    maxLength={500}
                   />
                 </label>
                 <p className="rounded-xl bg-[#eef4ff] px-3 py-2 text-xs text-[#1e3a8a]">
@@ -404,22 +483,30 @@ export default function Home() {
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-[#1f2937]">Your name</span>
                   <input
+                    name="name"
+                    type="text"
                     value={form.name}
                     onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none focus:border-[#2563eb] md:py-2.5 md:text-sm"
+                    onFocus={handleFieldFocus}
+                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none transition-colors focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 md:py-2.5 md:text-sm"
                     placeholder="Full name"
                     autoComplete="name"
                     autoCapitalize="words"
-                    required
+                    autoCorrect="off"
+                    spellCheck={false}
+                    enterKeyHint="next"
+                    maxLength={120}
                   />
                 </label>
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-[#1f2937]">Your email</span>
                   <input
+                    name="email"
                     type="email"
                     value={form.email}
                     onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none focus:border-[#2563eb] md:py-2.5 md:text-sm"
+                    onFocus={handleFieldFocus}
+                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none transition-colors focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 md:py-2.5 md:text-sm"
                     placeholder="you@email.com"
                     autoComplete="email"
                     autoCapitalize="none"
@@ -427,21 +514,22 @@ export default function Home() {
                     spellCheck={false}
                     inputMode="email"
                     enterKeyHint="send"
-                    required
+                    maxLength={254}
                   />
                 </label>
-                <button
-                  type="submit"
-                  disabled={!form.role || !form.reason.trim() || !form.name.trim() || !form.email.trim() || isSubmitting}
-                  className="min-h-[48px] w-full touch-manipulation rounded-full bg-[#2563eb] px-5 py-3 text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0 sm:py-2.5 sm:text-sm active:bg-blue-700"
-                >
-                  {isSubmitting ? "Submitting…" : "Enter"}
-                </button>
                 {submitError && (
-                  <p className="text-pretty text-center text-sm text-[#b91c1c]" role="alert">
+                  <p className="text-pretty text-center text-sm text-[#b91c1c]" role="alert" aria-live="polite">
                     {submitError}
                   </p>
                 )}
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  aria-busy={isSubmitting}
+                  className="min-h-[48px] w-full touch-manipulation rounded-full bg-[#2563eb] px-5 py-3 text-base font-semibold text-white shadow-[0_8px_20px_-10px_rgba(37,99,235,0.7)] transition-[transform,background-color] disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-0 sm:py-2.5 sm:text-sm active:scale-[0.99] active:bg-[#1d4ed8]"
+                >
+                  {isSubmitting ? "Submitting…" : "Enter"}
+                </button>
               </form>
             )}
 
