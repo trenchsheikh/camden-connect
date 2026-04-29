@@ -16,9 +16,12 @@ export const metadata: Metadata = {
   title: "Camden Connect",
   description: "Mentor matching platform for Camden United",
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "512x512" }],
   },
 };
 
