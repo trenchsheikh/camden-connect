@@ -210,8 +210,7 @@ export default function Home() {
                 Atlas supports mentees to find the right mentor. Nova supports mentors to choose who to guide.
               </p>
               <p className="mt-2 max-w-xl text-xs leading-relaxed text-[#6b7280] sm:mt-3 sm:text-sm md:text-base max-md:animate-mobile-enter-up max-md:mobile-enter-delay-2">
-                We vet mentors and mentees for expertise and ambition—so you connect with strong talent from leading
-                companies.
+                AI agents pair your next match.
               </p>
               <div className="mt-5 flex w-full max-w-xl flex-col gap-between-buttons sm:mt-6 sm:flex-row md:mt-8 max-md:animate-mobile-enter-up max-md:mobile-enter-delay-3">
                 <Link
@@ -318,10 +317,9 @@ export default function Home() {
           aria-live="polite"
           aria-busy="true"
         >
-          <div className="animate-launch-gate-card w-full max-w-[280px] rounded-2xl border border-[#111827]/10 bg-white/95 px-6 py-6 text-center shadow-[0_24px_48px_-24px_rgba(15,23,42,0.35)] sm:px-7">
-            <p className="text-base font-semibold leading-snug tracking-tight text-[#111827]">We haven&apos;t launched yet</p>
-            <p className="mt-2 text-sm leading-snug text-[#4b5563]">Early access only—loading your form.</p>
-            <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-[#2563eb]">Loading</p>
+          <div className="animate-launch-gate-card w-full max-w-[260px] rounded-2xl border border-[#111827]/10 bg-white/95 px-6 py-6 text-center shadow-[0_24px_48px_-24px_rgba(15,23,42,0.35)] sm:px-7">
+            <p className="text-sm font-medium leading-snug text-[#4b5563]">AI agents pair your next match.</p>
+            <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-[#2563eb]">Loading</p>
             <div className="mx-auto mt-2.5 h-1.5 w-full max-w-[11rem] overflow-hidden rounded-full bg-[#e5e7eb]">
               <div className="launch-gate-sweep" />
             </div>
