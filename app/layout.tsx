@@ -12,9 +12,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteDescription =
+  "Mentor–mentee matching that vets both sides for expertise and ambition. Atlas helps mentees find the right mentor; Nova helps mentors choose who to guide.";
+
 export const metadata: Metadata = {
   title: "Camden Connect",
-  description: "Mentor matching platform for Camden United",
+  description: siteDescription,
+  openGraph: {
+    title: "Camden Connect",
+    description: siteDescription,
+    type: "website",
+    siteName: "Camden Connect",
+  },
+  twitter: {
+    card: "summary",
+    title: "Camden Connect",
+    description: siteDescription,
+  },
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
