@@ -7,10 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:push": "node --env-file=.env.local scripts/create-waitlist-table.mjs"
   },
   "dependencies": {
     "next": "16.2.4",
+    "pg": "^8.14.1",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
