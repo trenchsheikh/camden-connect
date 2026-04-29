@@ -1,17 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import logo from "../logo.png";
-
-function scrollFieldIntoView(el: HTMLElement) {
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      el.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
-    }, 120);
-  });
-}
 
 export default function Home() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -19,15 +11,29 @@ export default function Home() {
   const [shareState, setShareState] = useState<"idle" | "shared" | "copied">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [sheetMaxPx, setSheetMaxPx] = useState<number | null>(null);
   const [form, setForm] = useState({
     role: "",
     reason: "",
     name: "",
     email: "",
   });
+  const sheetRef = useRef<HTMLDivElement>(null);
+
   const closePopup = useCallback(() => {
     setIsPopupOpen(false);
+  }, []);
+
+  /** After the keyboard closes, nothing in the sheet is focused—scroll back to top for the default sheet view. */
+  const handleSheetFieldBlur = useCallback(() => {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const sheet = sheetRef.current;
+        if (!sheet) return;
+        const active = document.activeElement;
+        if (active instanceof Node && sheet.contains(active)) return;
+        sheet.scrollTo({ top: 0, behavior: "auto" });
+      }, 150);
+    });
   }, []);
 
   const openPopup = (role?: "mentor" | "mentee") => {
@@ -63,34 +69,6 @@ export default function Home() {
       document.body.style.width = "";
       document.body.style.overflow = "";
       window.scrollTo(0, scrollY);
-    };
-  }, [isPopupOpen]);
-
-  useLayoutEffect(() => {
-    if (!isPopupOpen) {
-      setSheetMaxPx(null);
-      return;
-    }
-
-    const vv = window.visualViewport;
-    const pad = 28;
-
-    const update = () => {
-      if (vv) {
-        setSheetMaxPx(Math.max(260, Math.round(vv.height - pad)));
-      } else {
-        setSheetMaxPx(null);
-      }
-    };
-
-    update();
-    if (!vv) return undefined;
-
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
     };
   }, [isPopupOpen]);
 
@@ -167,7 +145,7 @@ export default function Home() {
               <p className="hidden text-base font-extrabold tracking-tight text-[#2563eb] sm:text-lg md:block md:text-xl">Camden Connect</p>
             </div>
             <Link
-              className="rounded-full bg-[#2563eb] px-3.5 py-1.5 text-xs font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_12px_24px_-10px_rgba(37,99,235,0.8)] active:scale-95 sm:px-4 sm:py-2 sm:text-sm md:px-5"
+              className="rounded-full bg-gradient-to-br from-[#172554] via-[#2563eb] to-white px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_8px_20px_-10px_rgba(23,37,84,0.5)] drop-shadow-[0_1px_1px_rgba(15,23,42,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_12px_24px_-10px_rgba(23,37,84,0.55)] active:scale-95 sm:px-4 sm:py-2 sm:text-sm md:px-5"
               href="/mentee/invite"
               onClick={(event) => {
                 event.preventDefault();
@@ -184,7 +162,7 @@ export default function Home() {
         id="main-content"
         className="flex-1 pb-8 pt-[calc(0.5rem+3.5rem+env(safe-area-inset-top,0px))] sm:pb-10 sm:pt-[calc(0.75rem+3.75rem+env(safe-area-inset-top,0px))] md:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] md:pt-[calc(1rem+4.5rem+env(safe-area-inset-top,0px))]"
       >
-        <section className="mx-auto w-full max-w-[1200px] px-4 md:px-8">
+        <section className="mx-auto mt-4 w-full max-w-[1200px] px-4 sm:mt-5 md:mt-6 md:px-8">
           <div className="rounded-[18px] bg-gradient-to-r from-white via-[#eef4ff] to-[#dbeafe]/90 p-4 shadow-[0_20px_40px_-30px_rgba(17,24,39,0.65)] sm:p-5 md:rounded-[22px] md:p-10">
             <div className="md:animate-fade-up-soft">
               <h1 className="text-pretty text-[clamp(1.55rem,8.2vw,3.8rem)] font-extrabold leading-[1.1] text-[#111827] max-md:animate-mobile-enter-up">
@@ -197,9 +175,9 @@ export default function Home() {
                 We vet mentors and mentees for expertise and ambition—so you connect with strong talent from leading
                 companies.
               </p>
-              <div className="mt-5 flex flex-wrap gap-2.5 sm:mt-6 sm:gap-3 md:mt-8 max-md:animate-mobile-enter-up max-md:mobile-enter-delay-3">
+              <div className="mt-5 flex w-full max-w-xl flex-col gap-2.5 sm:mt-6 sm:flex-row sm:gap-3 md:mt-8 max-md:animate-mobile-enter-up max-md:mobile-enter-delay-3">
                 <Link
-                  className="rounded-full bg-[#2563eb] px-4 py-2 text-xs font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_12px_24px_-10px_rgba(37,99,235,0.8)] active:scale-95 sm:px-5 sm:py-2.5 sm:text-sm md:px-6 md:py-3"
+                  className="inline-flex min-h-11 flex-1 basis-0 items-center justify-center rounded-full bg-gradient-to-br from-[#172554] via-[#2563eb] to-white px-4 py-2.5 text-center text-xs font-bold text-white shadow-[0_10px_24px_-10px_rgba(23,37,84,0.55)] drop-shadow-[0_1px_1px_rgba(15,23,42,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_14px_28px_-10px_rgba(23,37,84,0.6)] active:scale-95 sm:min-h-12 sm:px-5 sm:py-2.5 sm:text-sm md:px-6 md:py-3"
                   href="/mentors"
                   onClick={(event) => {
                     event.preventDefault();
@@ -209,7 +187,7 @@ export default function Home() {
                   Start with Atlas
                 </Link>
                 <Link
-                  className="rounded-full border border-[#111827]/15 bg-white px-4 py-2 text-xs font-bold text-[#1f2937] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#f8fafc] hover:shadow-[0_10px_18px_-14px_rgba(17,24,39,0.5)] active:scale-95 sm:px-5 sm:py-2.5 sm:text-sm md:px-6 md:py-3"
+                  className="inline-flex min-h-11 flex-1 basis-0 items-center justify-center rounded-full bg-gradient-to-br from-[#172554] via-[#1e40af] to-white px-4 py-2.5 text-center text-xs font-bold text-white shadow-[0_10px_24px_-10px_rgba(23,37,84,0.55)] drop-shadow-[0_1px_1px_rgba(15,23,42,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_14px_28px_-10px_rgba(23,37,84,0.6)] active:scale-95 sm:min-h-12 sm:px-5 sm:py-2.5 sm:text-sm md:px-6 md:py-3"
                   href="/mentor/apply"
                   onClick={(event) => {
                     event.preventDefault();
@@ -308,16 +286,11 @@ export default function Home() {
           }}
         >
           <div
+            ref={sheetRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="early-access-title"
-            className="animate-modal-sheet modal-sheet-scroll w-full max-w-lg overflow-y-auto overscroll-y-contain rounded-t-[20px] bg-white px-4 pb-5 pt-3 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:rounded-2xl sm:p-6 sm:pb-6 md:p-7"
-            style={{
-              maxHeight:
-                sheetMaxPx != null
-                  ? `${sheetMaxPx}px`
-                  : "min(92dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.5rem))",
-            }}
+            className="animate-modal-sheet modal-sheet-scroll max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem))] w-full max-w-lg overflow-y-auto overscroll-y-contain rounded-t-[20px] bg-white px-4 pb-5 pt-3 shadow-[0_24px_48px_-24px_rgba(17,24,39,0.65)] sm:rounded-2xl sm:p-6 sm:pb-6 md:p-7"
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="flex justify-center pb-2 sm:hidden" aria-hidden>
@@ -397,12 +370,12 @@ export default function Home() {
                     rows={3}
                     value={form.reason}
                     onChange={(event) => setForm((prev) => ({ ...prev, reason: event.target.value }))}
-                    onFocus={(e) => scrollFieldIntoView(e.currentTarget)}
                     className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none focus:border-[#2563eb] md:py-2.5 md:text-sm"
                     placeholder="Share your reason in one or two lines..."
                     autoComplete="off"
                     autoCorrect="on"
                     enterKeyHint="done"
+                    onBlur={handleSheetFieldBlur}
                   />
                 </label>
                 <p className="rounded-xl bg-[#eef4ff] px-3 py-2 text-xs text-[#1e3a8a]">
@@ -413,11 +386,11 @@ export default function Home() {
                   <input
                     value={form.name}
                     onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                    onFocus={(e) => scrollFieldIntoView(e.currentTarget)}
                     className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none focus:border-[#2563eb] md:py-2.5 md:text-sm"
                     placeholder="Full name"
                     autoComplete="name"
                     autoCapitalize="words"
+                    onBlur={handleSheetFieldBlur}
                     required
                   />
                 </label>
@@ -427,7 +400,6 @@ export default function Home() {
                     type="email"
                     value={form.email}
                     onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                    onFocus={(e) => scrollFieldIntoView(e.currentTarget)}
                     className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none focus:border-[#2563eb] md:py-2.5 md:text-sm"
                     placeholder="you@email.com"
                     autoComplete="email"
@@ -436,6 +408,7 @@ export default function Home() {
                     spellCheck={false}
                     inputMode="email"
                     enterKeyHint="send"
+                    onBlur={handleSheetFieldBlur}
                     required
                   />
                 </label>
