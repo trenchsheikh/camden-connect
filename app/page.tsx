@@ -17,6 +17,7 @@ import logo from "../logo.png";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FIELD_ORDER = ["reason", "name", "email"] as const;
 type FieldName = (typeof FIELD_ORDER)[number];
+type MobileFormStep = 0 | 1 | 2;
 
 export default function Home() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -24,6 +25,7 @@ export default function Home() {
   const [shareState, setShareState] = useState<"idle" | "shared" | "copied">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [mobileFormStep, setMobileFormStep] = useState<MobileFormStep>(0);
   const [form, setForm] = useState({
     role: "",
     reason: "",
@@ -45,6 +47,7 @@ export default function Home() {
     setShareState("idle");
     setSubmitError("");
     setIsSubmitting(false);
+    setMobileFormStep(0);
     setForm({
       role: role ?? "",
       reason: "",
@@ -167,6 +170,11 @@ export default function Home() {
         const idx = FIELD_ORDER.indexOf(current);
         const next = FIELD_ORDER[idx + 1];
         if (next) {
+          if (current === "reason") {
+            setMobileFormStep(2);
+            window.setTimeout(() => focusFieldByName(next), 0);
+            return;
+          }
           focusFieldByName(next);
         } else {
           formRef.current?.requestSubmit();
@@ -183,6 +191,40 @@ export default function Home() {
     [submitError]
   );
 
+  const validateMobileStep = useCallback(
+    (step: MobileFormStep) => {
+      if (step === 0 && !form.role) {
+        setSubmitError("Please pick whether you're a mentor or a mentee.");
+        return false;
+      }
+      if (step === 1 && !form.reason.trim()) {
+        setSubmitError("Tell us in a line or two why you'd like to use Camden Connect.");
+        return false;
+      }
+      setSubmitError("");
+      return true;
+    },
+    [form.reason, form.role]
+  );
+
+  const goToMobileStep = useCallback(
+    (step: MobileFormStep) => {
+      setMobileFormStep(step);
+      setSubmitError("");
+    },
+    []
+  );
+
+  const goToNextMobileStep = useCallback(() => {
+    if (!validateMobileStep(mobileFormStep)) return;
+    const nextStep = Math.min(mobileFormStep + 1, 2) as MobileFormStep;
+    setMobileFormStep(nextStep);
+    window.setTimeout(() => {
+      if (nextStep === 1) focusFieldByName("reason");
+      if (nextStep === 2) focusFieldByName("name");
+    }, 0);
+  }, [focusFieldByName, mobileFormStep, validateMobileStep]);
+
   /** Press Enter on the selected role to move into the next form field. */
   const handleRoleKeyDown = useCallback(
     (role: "mentor" | "mentee") =>
@@ -190,6 +232,7 @@ export default function Home() {
         if (event.key === "Enter") {
           event.preventDefault();
           selectRole(role);
+          setMobileFormStep(1);
           window.setTimeout(() => focusFieldByName("reason"), 0);
         }
       },
@@ -526,7 +569,20 @@ export default function Home() {
                 onSubmit={submitDetails}
                 noValidate
               >
-                <div>
+                <div className="md:hidden">
+                  <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[#6b7280]">
+                    <span>Step {mobileFormStep + 1} of 3</span>
+                    <span>{["Role", "Reason", "Contact"][mobileFormStep]}</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-[#e5e7eb]" aria-hidden>
+                    <div
+                      className="h-full rounded-full bg-[#2563eb] transition-[width] duration-200"
+                      style={{ width: `${((mobileFormStep + 1) / 3) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className={mobileFormStep === 0 ? "block" : "hidden md:block"}>
                   <p className="mb-2 text-sm font-semibold text-[#1f2937]" id="early-access-role-label">
                     Who are you?
                   </p>
@@ -573,7 +629,7 @@ export default function Home() {
                     </label>
                   </div>
                 </div>
-                <label className="block">
+                <label className={mobileFormStep === 1 ? "block" : "hidden md:block"}>
                   <span className="mb-2 block text-sm font-semibold text-[#1f2937]">Why do you want to use the platform?</span>
                   <textarea
                     name="reason"
@@ -590,60 +646,91 @@ export default function Home() {
                     maxLength={500}
                   />
                 </label>
-                <p className="rounded-xl bg-[#eef4ff] px-3 py-2 text-xs text-[#1e3a8a]">
-                  How we&apos;ll contact you if we launch:
-                </p>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-[#1f2937]">Your name</span>
-                  <input
-                    name="name"
-                    type="text"
-                    value={form.name}
-                    onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                    onFocus={handleFieldFocus}
-                    onKeyDown={handleAdvanceKey("name")}
-                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none transition-colors focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 md:py-2.5 md:text-sm"
-                    placeholder="Full name"
-                    autoComplete="name"
-                    autoCapitalize="words"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    enterKeyHint="next"
-                    maxLength={120}
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-[#1f2937]">Your email</span>
-                  <input
-                    name="email"
-                    type="email"
-                    value={form.email}
-                    onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                    onFocus={handleFieldFocus}
-                    onKeyDown={handleAdvanceKey("email")}
-                    className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none transition-colors focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 md:py-2.5 md:text-sm"
-                    placeholder="you@email.com"
-                    autoComplete="email"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    inputMode="email"
-                    enterKeyHint="send"
-                    maxLength={254}
-                  />
-                </label>
+                <div className={mobileFormStep === 2 ? "space-y-4" : "hidden space-y-4 md:block"}>
+                  <p className="rounded-xl bg-[#eef4ff] px-3 py-2 text-xs text-[#1e3a8a]">
+                    How we&apos;ll contact you if we launch:
+                  </p>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-[#1f2937]">Your name</span>
+                    <input
+                      name="name"
+                      type="text"
+                      value={form.name}
+                      onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+                      onFocus={handleFieldFocus}
+                      onKeyDown={handleAdvanceKey("name")}
+                      className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none transition-colors focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 md:py-2.5 md:text-sm"
+                      placeholder="Full name"
+                      autoComplete="name"
+                      autoCapitalize="words"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      enterKeyHint="next"
+                      maxLength={120}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-[#1f2937]">Your email</span>
+                    <input
+                      name="email"
+                      type="email"
+                      value={form.email}
+                      onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+                      onFocus={handleFieldFocus}
+                      onKeyDown={handleAdvanceKey("email")}
+                      className="w-full rounded-xl border border-[#111827]/15 px-3 py-3 text-base outline-none transition-colors focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 md:py-2.5 md:text-sm"
+                      placeholder="you@email.com"
+                      autoComplete="email"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      inputMode="email"
+                      enterKeyHint="send"
+                      maxLength={254}
+                    />
+                  </label>
+                </div>
                 {submitError && (
                   <p className="text-pretty text-center text-sm text-[#b91c1c]" role="alert" aria-live="polite">
                     {submitError}
                   </p>
                 )}
+                <div className="flex gap-3 md:hidden">
+                  {mobileFormStep > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => goToMobileStep((mobileFormStep - 1) as MobileFormStep)}
+                      className="min-h-[48px] flex-1 touch-manipulation rounded-full border border-[#111827]/15 px-5 py-3 text-base font-semibold text-[#1f2937] transition-colors active:bg-[#f1f5f9]"
+                    >
+                      Back
+                    </button>
+                  )}
+                  {mobileFormStep < 2 ? (
+                    <button
+                      type="button"
+                      onClick={goToNextMobileStep}
+                      className="min-h-[48px] flex-1 touch-manipulation rounded-full bg-[#2563eb] px-5 py-3 text-base font-semibold text-white shadow-[0_8px_20px_-10px_rgba(37,99,235,0.7)] transition-[transform,background-color] active:scale-[0.99] active:bg-[#1d4ed8]"
+                    >
+                      Next
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      aria-busy={isSubmitting}
+                      className="min-h-[48px] flex-1 touch-manipulation rounded-full bg-[#2563eb] px-5 py-3 text-base font-semibold text-white shadow-[0_8px_20px_-10px_rgba(37,99,235,0.7)] transition-[transform,background-color] disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99] active:bg-[#1d4ed8]"
+                    >
+                      {isSubmitting ? "Submitting..." : "Submit"}
+                    </button>
+                  )}
+                </div>
                 <button
                   type="submit"
                   disabled={isSubmitting}
                   aria-busy={isSubmitting}
-                  className="min-h-[48px] w-full touch-manipulation rounded-full bg-[#2563eb] px-5 py-3 text-base font-semibold text-white shadow-[0_8px_20px_-10px_rgba(37,99,235,0.7)] transition-[transform,background-color] disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-0 sm:py-2.5 sm:text-sm active:scale-[0.99] active:bg-[#1d4ed8]"
+                  className="hidden min-h-[48px] w-full touch-manipulation rounded-full bg-[#2563eb] px-5 py-3 text-base font-semibold text-white shadow-[0_8px_20px_-10px_rgba(37,99,235,0.7)] transition-[transform,background-color] disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99] active:bg-[#1d4ed8] md:block md:min-h-0 md:py-2.5 md:text-sm"
                 >
-                  {isSubmitting ? "Submitting…" : "Enter"}
+                  {isSubmitting ? "Submitting..." : "Submit"}
                 </button>
               </form>
             )}
