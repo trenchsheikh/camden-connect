@@ -103,7 +103,7 @@ export default function Home() {
 
       <main
         id="main-content"
-        className="flex-1 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] pt-[calc(0.5rem+3.5rem+env(safe-area-inset-top,0px))] sm:pb-[calc(6.25rem+env(safe-area-inset-bottom,0px))] sm:pt-[calc(0.75rem+3.75rem+env(safe-area-inset-top,0px))] md:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] md:pt-[calc(1rem+4.5rem+env(safe-area-inset-top,0px))]"
+        className="flex-1 pb-8 pt-[calc(0.5rem+3.5rem+env(safe-area-inset-top,0px))] sm:pb-10 sm:pt-[calc(0.75rem+3.75rem+env(safe-area-inset-top,0px))] md:pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] md:pt-[calc(1rem+4.5rem+env(safe-area-inset-top,0px))]"
       >
         <section className="mx-auto w-full max-w-[1200px] px-4 md:px-8">
           <div className="rounded-[18px] bg-gradient-to-r from-white via-[#eef4ff] to-[#dbeafe]/90 p-4 shadow-[0_20px_40px_-30px_rgba(17,24,39,0.65)] sm:p-5 md:rounded-[22px] md:p-10">
@@ -199,7 +199,7 @@ export default function Home() {
 
       </main>
 
-      <footer className="fixed inset-x-0 bottom-0 z-40 flex flex-col">
+      <footer className="relative z-40 mt-auto flex w-full flex-col md:fixed md:inset-x-0 md:bottom-0 md:mt-0">
         <div className="border-t border-[#111827]/10 bg-gradient-to-r from-white via-[#eef4ff] to-[#dbeafe]/90 backdrop-blur-sm">
           <div className="mx-auto flex w-full max-w-[1200px] items-center justify-center px-4 py-3 text-xs sm:px-5 sm:py-4 sm:text-sm md:px-8">
             <p className="text-center font-['Times_New_Roman'] italic text-[#6b7280]">When one person is seen, a whole future changes.</p>
